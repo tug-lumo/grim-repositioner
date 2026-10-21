@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Grim Repositioner</title>
+<link rel="icon" type="image/svg+xml" href="brand/reaper.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pirata+One&display=swap">
+<style>
+  /* The Grim Repositioner: crypt darks, bone text, spectral-green LED faces, blood for the things
+     that matter (primary actions, selection, omens). The title face is Pirata One when online;
+     everything else is the system UI font so it works offline. */
+  :root {
+    --void: #0b0a0d;
+    --crypt: #131116;
+    --crypt2: #1b1820;
+    --crypt3: #241f2a;
+    --line: #2f2a35;
+    --line2: #463e4e;
+    --bone: #e9e2d0;
+    --ash: #a39bab;
+    --dim: #756d7c;
+    --blood: #b3121f;
+    --bloodHi: #d01a29;
+    --ember: #ff3b3b;
+    --spectre: #7cf0c5;
+    --lane: #d8b54a;
+    --ghost: #9a8cd0;
+    --ceil: #a493ff;
+    --top: 54px;
+    --side: 372px;
+    --r: 8px;
+    --focus: 0 0 0 2px var(--void), 0 0 0 4px var(--spectre);
+    --ease: cubic-bezier(.16, 1, .3, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--void); color: var(--bone);
+    font: 13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  ::selection { background: rgba(124, 240, 197, .25); }
+  * { scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
+  .num, input, .stats dd { font-variant-numeric: tabular-nums; }
+
+  button, select, input {
+    font: inherit; color: var(--bone); background: var(--crypt3); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 9px; transition: border-color .15s, background-color .15s, color .15s;
+  }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--line2); background: #2c2633; }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: none; box-shadow: var(--focus); }
+  button:disabled { opacity: .4; cursor: default; }
+  button.primary { background: var(--blood); border-color: var(--blood); color: #fff; font-weight: 600; }
+  button.primary:hover { background: var(--bloodHi); border-color: var(--bloodHi); }
+  button.ghostBtn { background: transparent; border-color: transparent; color: var(--ash); }
+  button.ghostBtn:hover { color: var(--bone); background: var(--crypt3); }
+  button.danger { color: #ff8a8a; }
+  button.danger:hover { border-color: var(--blood); background: rgba(179, 18, 31, .18); }
+  button.on { background: var(--crypt3); border-color: var(--spectre); color: var(--spectre); }
+  button svg { width: 16px; height: 16px; vertical-align: -3px; }
+  input { cursor: text; min-width: 0; }
+  input[type="checkbox"] { accent-color: var(--blood); width: 15px; height: 15px; margin: 0; }
+  select { cursor: pointer; }
+
+  /* ---------- Top bar ---------- */
+  #top { position: absolute; inset: 0 0 auto 0; height: var(--top); z-index: 20; display: flex; align-items: center; gap: 10px;
+    padding: 0 12px 0 0; background: linear-gradient(#141117, #100e13); border-bottom: 1px solid var(--line); }
+  #top .brand { width: 54px; height: 100%; display: grid; place-items: center; border-right: 1px solid var(--line); flex-shrink: 0; }
+  #top .brand img { width: 34px; height: 34px; }
+  #top h1 { margin: 0; font: 400 25px/1 "Pirata One", "Old English Text MT", Georgia, serif; letter-spacing: .02em; white-space: nowrap; color: var(--bone); }
+  #top h1 b { color: var(--ember); font-weight: 400; }
+  #top .tag { color: var(--dim); font-size: 12px; white-space: nowrap; }
+  #layoutName { width: 200px; background: transparent; border-color: transparent; font-weight: 600; }
+  #layoutName:hover { border-color: var(--line); }
+  #top .spacer { flex: 1; }
+  .seg { display: inline-flex; padding: 2px; gap: 2px; background: var(--void); border: 1px solid var(--line); border-radius: 8px; }
+  .seg button { border: 0; background: transparent; color: var(--ash); padding: 5px 11px; border-radius: 6px; font-weight: 550; }
+  .seg button:hover { color: var(--bone); background: var(--crypt3); }
+  .seg button.active { background: var(--blood); color: #fff; }
+  .seg.sm button { padding: 3px 9px; font-size: 12px; }
+  .vr { width: 1px; height: 26px; background: var(--line); }
+
+  /* ---------- Side panel ---------- */
+  #side { position: absolute; top: var(--top); left: 0; bottom: 0; width: var(--side); overflow-y: auto; overflow-x: hidden;
+    background: var(--crypt); border-right: 1px solid var(--line); z-index: 10; padding-bottom: 40px; }
+  .group { padding: 14px 14px 6px; }
+  .group + .group { border-top: 1px solid var(--line); }
+  .ghead { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .ghead h2 { margin: 0; flex: 1; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ash); }
+  .ghead button { padding: 3px 8px; font-size: 12px; }
+
+  .item { border: 1px solid var(--line); border-radius: var(--r); background: var(--crypt2); margin-bottom: 8px; overflow: hidden; }
+  .item > header { display: flex; align-items: center; gap: 8px; padding: 7px 8px 7px 10px; cursor: pointer; }
+  .item > header:hover { background: var(--crypt3); }
+  .item .dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; background: var(--spectre); }
+  .item .dot.ceil { background: transparent; border: 2px dashed var(--ceil); }
+  .item .dot.deck { box-shadow: 0 3px 0 -1px #8a7a62; }
+  .item .nm { flex: 1; font-weight: 600; background: transparent; border-color: transparent; padding: 3px 5px; }
+  .item:not(.sel) .nm { pointer-events: none; }
+  .item .sub { color: var(--ash); font-size: 12px; white-space: nowrap; }
+  .item .eye { padding: 3px 6px; background: transparent; border-color: transparent; color: var(--ash); }
+  .item .eye:hover { color: var(--bone); }
+  .item.hid > header { opacity: .5; }
+  .item.sel { border-color: var(--blood); box-shadow: 0 0 0 1px rgba(179, 18, 31, .35), 0 10px 30px -12px rgba(179, 18, 31, .5); }
+  .item.sel > header { background: linear-gradient(90deg, rgba(179, 18, 31, .22), transparent); }
+  .item .body { padding: 4px 10px 10px; border-top: 1px solid var(--line); }
+  .item h5 { margin: 12px 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ash); display: flex; gap: 8px; align-items: baseline; }
+  .item h5 small { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--dim); }
+  .fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 8px; }
+  .fields.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fields label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--ash); }
+  .fields input { width: 100%; padding: 5px 7px; }
+  .chk { display: flex; align-items: center; gap: 8px; margin: 10px 0 6px; color: var(--bone); cursor: pointer; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .btnrow button, .btnrow select { padding: 4px 9px; font-size: 12px; }
+  .btnrow .push { margin-left: auto; }
+
+  table.secs { width: 100%; border-collapse: collapse; }
+  table.secs th { font-size: 10px; font-weight: 600; color: var(--dim); text-align: left; padding: 0 4px 3px; text-transform: uppercase; letter-spacing: .06em; }
+  table.secs td { padding: 2px 4px; }
+  table.secs td:first-child { color: var(--dim); width: 18px; }
+  table.secs input { width: 100%; padding: 4px 6px; }
+  table.secs .arc { color: var(--ash); white-space: nowrap; width: 54px; text-align: right; }
+  table.secs button { padding: 2px 7px; background: transparent; border-color: transparent; color: var(--dim); }
+  table.secs button:hover { color: #ff8a8a; border-color: var(--line); }
+  table.secs tr.cur td { background: rgba(124, 240, 197, .06); }
+
+  .stats { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 10px 0 0; padding: 8px 10px; background: var(--void); border-radius: 6px; border: 1px solid var(--line); }
+  .stats dt { color: var(--ash); font-size: 12px; }
+  .stats dd { margin: 0; text-align: right; font-weight: 600; font-size: 12px; }
+
+  .totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .tot { background: var(--crypt2); border: 1px solid var(--line); border-radius: 7px; padding: 7px 9px; }
+  .tot b { display: block; font-size: 19px; font-weight: 700; line-height: 1.15; }
+  .tot span { font-size: 11px; color: var(--ash); }
+  .owned { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--ash); font-size: 12px; }
+  .owned input { width: 80px; }
+  .owned .ok { color: var(--spectre); font-weight: 600; }
+  .owned .short { color: var(--ember); font-weight: 700; }
+  .omens { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+  .omens li { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border-radius: 6px; background: rgba(179, 18, 31, .12); border: 1px solid rgba(179, 18, 31, .35); font-size: 12px; cursor: pointer; }
+  .omens li.warn { background: rgba(216, 181, 74, .08); border-color: rgba(216, 181, 74, .3); }
+  .omens li i { font-style: normal; flex-shrink: 0; }
+  .omens li.clear { background: rgba(124, 240, 197, .06); border-color: rgba(124, 240, 197, .25); color: var(--ash); cursor: default; }
+  .empty { color: var(--dim); font-size: 12px; padding: 4px 2px 10px; font-style: italic; }
+
+  .lib { list-style: none; margin: 8px 0 0; padding: 0; }
+  .lib li { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-top: 1px solid var(--line); }
+  .lib li span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lib li small { color: var(--dim); }
+  .lib li button { padding: 2px 8px; font-size: 12px; }
+
+  /* ---------- Views ---------- */
+  #views { position: absolute; top: var(--top); left: var(--side); right: 0; bottom: 0; display: flex; }
+  .view { position: relative; flex: 1; min-width: 0; overflow: hidden; }
+  #planWrap { background: var(--void); cursor: default; touch-action: none; }
+  #planWrap.pan { cursor: grabbing; }
+  #planWrap.measuring { cursor: crosshair; }
+  #threeWrap { border-left: 1px solid var(--line); background: #0d0c10; }
+  body[data-view="plan"] #threeWrap, body[data-view="3d"] #planWrap { display: none; }
+  body[data-view="3d"] #threeWrap { border-left: 0; }
+  canvas { display: block; }
+  .hint { position: absolute; left: 10px; right: 170px; bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--dim); font-size: 11px; pointer-events: none; text-shadow: 0 1px 2px #000; }
+  .readout { position: absolute; right: 10px; bottom: 8px; color: var(--ash); font-size: 11px; pointer-events: none; }
+  .viewTag { position: absolute; left: 10px; top: 8px; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); pointer-events: none; }
+  .viewBtns { position: absolute; right: 10px; top: 8px; display: flex; gap: 6px; }
+  .viewBtns button { padding: 3px 9px; font-size: 12px; background: rgba(19, 17, 22, .85); }
+
+  #toast { position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; z-index: 50;
+    background: var(--crypt3); border: 1px solid var(--line2); border-radius: 8px; padding: 9px 14px; box-shadow: 0 12px 30px -8px #000;
+    transition: opacity .2s var(--ease), transform .3s var(--ease); display: flex; gap: 12px; align-items: center; }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  #toast button { padding: 3px 10px; }
+
+  #print { display: none; }
+  @media (max-width: 1100px) { :root { --side: 320px; } #top .tag { display: none; } }
+  @media (max-width: 820px) { #top h1 { font-size: 20px; } #layoutName { width: 120px; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  @media print {
+    @page { size: A3 landscape; margin: 10mm; }
+    html, body { height: auto; overflow: visible; background: #fff; color: #111; }
+    body > *:not(#print) { display: none !important; }
+    #print { display: block; font: 10pt/1.35 Arial, sans-serif; }
+    #print header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #111; padding-bottom: 4px; margin-bottom: 6px; }
+    #print h1 { font: 400 22pt/1 "Pirata One", Georgia, serif; margin: 0; }
+    #print img { width: 100%; max-height: 175mm; object-fit: contain; display: block; }
+    #print .sched { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8mm; margin-top: 4mm; break-inside: avoid; }
+    #print table { width: 100%; border-collapse: collapse; }
+    #print th, #print td { border-bottom: 1px solid #bbb; padding: 2px 5px; text-align: left; font-size: 9pt; }
+    #print th { background: #eee; }
+    #print .warn { color: #a00; }
+  }
+</style>
+</head>
+<body data-view="split">
+
+<div id="top">
+  <div class="brand"><img src="brand/reaper.svg" alt=""></div>
+  <h1>The Grim <b>Re</b>positioner</h1>
+  <span class="tag">Lumostage · stage reconfiguration</span>
+  <div class="vr"></div>
+  <input id="layoutName" aria-label="Layout name" spellcheck="false">
+  <div class="spacer"></div>
+  <div class="seg" id="viewSeg" role="group" aria-label="View">
+    <button data-v="plan" title="Plan only (1)">Plan</button>
+    <button data-v="split" title="Plan and 3D side by side (2)">Split</button>
+    <button data-v="3d" title="3D only (3)">3D</button>
+  </div>
+  <div class="vr"></div>
+  <button id="ghostBtn" class="ghostBtn" title="Show the current stage as a ghost under your layout (G)">Ghost</button>
+  <button id="measureBtn" class="ghostBtn" title="Drag on the plan to measure (M)">Measure</button>
+  <select id="snapSel" title="Snap step for dragging (hold Shift to move freely)" aria-label="Snap step"></select>
+  <button id="unitBtn" class="ghostBtn" title="Switch between feet & inches and metres">ft·in</button>
+  <div class="vr"></div>
+  <button id="undoBtn" class="ghostBtn" title="Undo (Ctrl+Z)" aria-label="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button>
+  <button id="redoBtn" class="ghostBtn" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg></button>
+  <button id="printBtn" class="primary" title="Print the plan and the panel schedule">Print plan</button>
+</div>
+
+<aside id="side">
+  <section class="group" id="sumGroup">
+    <div class="ghead"><h2>Panel count</h2></div>
+    <div class="totals" id="totals"></div>
+    <div class="owned"><label for="ownedIn">Panels owned</label><input id="ownedIn" inputmode="numeric" placeholder="—"><span id="ownedOut"></span></div>
+    <ul class="omens" id="omens"></ul>
+  </section>
+  <section class="group">
+    <div class="ghead"><h2>LED walls</h2>
+      <button id="addWall" title="A new LED wall standing on the floor">+ Wall</button>
+      <button id="addMobile" title="A new straight wall on a rolling deck">+ Mobile wall</button>
+    </div>
+    <div id="wallList"></div>
+  </section>
+  <section class="group">
+    <div class="ghead"><h2>Ceilings</h2><button id="addCeil">+ Ceiling</button></div>
+    <div id="ceilList"></div>
+  </section>
+  <section class="group">
+    <div class="ghead"><h2>Layouts</h2></div>
+    <div class="btnrow" style="margin-top:0">
+      <button id="saveLayout" class="primary">Save in browser</button>
+      <button id="exportBtn">Export JSON</button>
+      <button id="importBtn">Import JSON</button>
+      <button id="newBtn" class="danger" title="Start over from the stage as it stands today">Start over</button>
+    </div>
+    <ul class="lib" id="libList"></ul>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+  </section>
+</aside>
+
+<main id="views">
+  <div class="view" id="planWrap">
+    <canvas id="plan"></canvas>
+    <span class="viewTag">Plan · volume at top</span>
+    <div class="viewBtns"><button id="fitBtn" title="Fit the studio in view (F)">Fit</button></div>
+    <span class="hint" id="planHint">Drag a piece to move it · drag the red handle to turn · [ ] turn 15° · arrows nudge · Shift = no snap · wheel zooms · drag empty floor to pan</span>
+    <span class="readout num" id="planReadout"></span>
+  </div>
+  <div class="view" id="threeWrap">
+    <span class="viewTag">3D · walk the stage</span>
+    <div class="viewBtns"><button id="povBtn" title="Stand at the back of the shooting floor">Floor POV</button><button id="highBtn" title="High three-quarter view">High</button></div>
+    <span class="hint">Drag to look · WASD move · Q / E down / up · Shift runs · click a wall to select it</span>
+  </div>
+</main>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="print"></div>
+
+<script src="vendor/three/three.min.js"></script>
+<script>
+"use strict";
+// ======================================================================
+//  The Grim Repositioner: try out new layouts of the Lumostage studio.
+//  The room (walls, doors, rooms, partition, column, fire lane) is fixed.
+//  Everything LED is data: walls built from sections of N panels at a
+//  curve per panel, rolling-deck walls, and ceilings. World unit = 1 ft.
+//  Frame (from Mock & Roll): +Z = north (the shooting floor), -X = east;
+//  the plan draws +X to the right and +Z down, so the volume sits at top.
+// ======================================================================
+const FT_PER_M = 3.280839895, M_PER_FT = 0.3048;
+const PANEL_M = 0.5;                      // the panel module (50 cm)
+const WALL_T = 0.35;                      // LED cabinet depth drawn (ft)
+const $ = s => document.querySelector(s);
+
+// ---- The studio (20315 96 Ave), from Mock & Roll's 2026-10 floor-plan revision. Fixed. ----------
+const STUDIO = {
+  xMin: -22.6875, xMax: 57.3125, zBack: -28.09, zFront: 43.45, wallHeightFt: 27,
+  rooms: [
+    { name: "Kitchen · WR · WR", x0: 17.81, x1: 40.73, z0: -28.09, z1: -17.55, heightFt: 10 },
+    { name: "Green room", x0: 40.73, x1: 50.9, z0: -28.09, z1: -14.55, heightFt: 10 }
+  ],
+  partition: { heightFt: 12, path: [[19.17, -0.42], [25, -0.42], [25, -10.42], [30.87, -10.42]] },
+  doors: [
+    { wall: "east", at: 33.95, width: 12, heightFt: 14, type: "grade", label: "Grade door" },
+    { wall: "east", at: 22.95, width: 3, heightFt: 7, type: "fire", label: "Fire exit" },
+    { wall: "east", at: 11.95, width: 3, heightFt: 7, type: "fire", label: "Fire exit" },
+    { wall: "west", at: 17.95, width: 6, heightFt: 7, type: "fire", label: "Fire exit" },
+    { wall: "north", at: 52.9, width: 6, heightFt: 7, type: "door", label: "To storage" },
+    { wall: "south", at: 52.81, width: 3, heightFt: 7, type: "fire", label: "Fire exit" }
+  ],
+  // An 8" post wrapped in tech: the 18" square is the keep-out, plus a 6" clearance line.
+  pillar: { x: 19.65, z: 16.49, sizeFt: 1.5, coreSizeFt: 0.667, coreZ: 16.66, techHeightFt: 9, clearanceFt: 0.5 },
+  // Fire lane: 3.5' inside the room's perimeter (round the kitchen / green-room block). In Mock & Roll
+  // it followed the fixed curve; here the wall moves, so the lane follows the room.
+  fireLaneFt: 3.5,
+  laneOutline: [[-22.6875, 43.45], [57.3125, 43.45], [57.3125, -28.09], [50.9, -28.09], [50.9, -14.55], [40.73, -14.55],
+                [40.73, -17.55], [17.81, -17.55], [17.81, -28.09], [-22.6875, -28.09]],
+  ceilingRig: { minFt: 4, maxFt: 20, motorFt: 24 }
+};
+
+// ---- Defaults: the stage as it stands (Mock & Roll's base volume) ------------------------------
+// A wall is a run of sections; each section is `panels` panels with `curveDeg` between neighbours
+// (36 panels at 5° = a half circle). `pin` is the point that stays put while you edit sections
+// (start / middle / end of the run); x, z is where that point sits and rotationDeg the way the wall
+// runs there (0° = running west along +X with the LED face toward the shooting floor, +Z).
+function defaultLayout() {
+  return {
+    app: "grim-repositioner", version: 1, name: "Current stage",
+    walls: [
+      // Main volume: 36 x 10 at 5° (a half circle, r 18′ 9.6″), footed 6¾″ up. Apex 18′ 9.6″ behind the tip line (z = -0.42).
+      { id: "w1", name: "Main volume", panelsHigh: 10, footingFt: 0.5625, pin: "middle", x: 0, z: -19.224, rotationDeg: 0,
+        segments: [{ panels: 36, curveDeg: 5 }], deck: { on: false, lengthFt: 16, depthFt: 4, heightFt: 2 }, visible: true },
+      // Rolling walls: 10 x 8 on their 16′ x 4′ x 2′ decks, LED faces just inside the mouth, facing in. (16′ 4.8″ of wall
+      // only just fits between the tip line and the column, so the decks sit in its 6″ clearance.)
+      { id: "w2", name: "Mobile wall L", panelsHigh: 8, footingFt: 0, pin: "middle", x: -18.4, z: 7.6, rotationDeg: -90,
+        segments: [{ panels: 10, curveDeg: 0 }], deck: { on: true, lengthFt: 16, depthFt: 4, heightFt: 2 }, visible: true },
+      { id: "w3", name: "Mobile wall R", panelsHigh: 8, footingFt: 0, pin: "middle", x: 18.4, z: 7.6, rotationDeg: 90,
+        segments: [{ panels: 10, curveDeg: 0 }], deck: { on: true, lengthFt: 16, depthFt: 4, heightFt: 2 }, visible: true }
+    ],
+    // LED ceiling: 10 wide x 6 long at 20′, centred on the volume, near edge 16′ out from the deepest panel.
+    ceilings: [{ id: "c1", name: "LED ceiling", panelsWide: 10, panelsLong: 6, heightFt: 20, tiltDeg: 0, x: 0, z: 1.75, rotationDeg: 0, visible: true }]
+  };
+}
+const GHOST = defaultLayout();
+
+const PRESETS = [
+  { name: "Current volume · 36 @ 5°", segments: [{ panels: 36, curveDeg: 5 }] },
+  { name: "Gentle arc · 50 @ 2.5°", segments: [{ panels: 50, curveDeg: 2.5 }] },
+  { name: "Hockey stick · 24 @ 5° + 30 flat", segments: [{ panels: 24, curveDeg: 5 }, { panels: 30, curveDeg: 0 }] },
+  { name: "U · 10 flat + 36 @ 5° + 10 flat", segments: [{ panels: 10, curveDeg: 0 }, { panels: 36, curveDeg: 5 }, { panels: 10, curveDeg: 0 }] },
+  { name: "L corner · 24 flat + 18 @ 5° + 24 flat", segments: [{ panels: 24, curveDeg: 0 }, { panels: 18, curveDeg: 5 }, { panels: 24, curveDeg: 0 }] },
+  { name: "Flat · 40 panels", segments: [{ panels: 40, curveDeg: 0 }] }
+];
+
+// ---- State -----------------------------------------------------------
+let L = defaultLayout();            // the layout being edited
+let selId = null;                   // selected wall / ceiling id
+let displayUnit = "ft";
+let snapFt = 0.5;
+let showGhost = false;
+let measuring = false;
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+displayUnit = store.get("grim.units", "ft") === "m" ? "m" : "ft";
+showGhost = store.get("grim.ghost", "0") === "1";
+
+// ---- Helpers ---------------------------------------------------------
+const deepClone = o => JSON.parse(JSON.stringify(o));
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+const panelFt = () => PANEL_M * FT_PER_M;
+const round2 = v => Math.round(v * 100) / 100;
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function fmtLen(ft) {
+  if (displayUnit === "m") return (ft * M_PER_FT).toFixed(2) + " m";
+  const neg = ft < 0, tot = Math.round(Math.abs(ft) * 24) / 2;
+  const f = Math.floor(tot / 12), i = tot - f * 12;
+  const inch = i ? " " + (i % 1 ? (Math.floor(i) ? Math.floor(i) : "") + "½" : i) + "″" : "";
+  return (neg ? "−" : "") + (f || !inch ? f + "′" + inch : inch.trim());
+}
+function fmtDeg(d) { return (Math.round(d * 10) / 10).toString().replace("-", "−") + "°"; }
+function lenInputVal(ft) { const v = displayUnit === "m" ? ft * M_PER_FT : ft; return String(Math.round(v * 100) / 100); }
+// Accepts 18.5 (in the current unit), 18'6", 18′ 6″, 18' 6, 5.6m, 560cm.
+function parseLen(str) {
+  const s = String(str).trim().replace(/[′’]/g, "'").replace(/[″”]/g, '"');
+  let m = s.match(/^(-?\d+(?:\.\d+)?)\s*'\s*(?:(\d+(?:\.\d+)?)\s*"?)?$/);
+  if (m) { const f = parseFloat(m[1]), i = m[2] ? parseFloat(m[2]) : 0; return f < 0 || s[0] === "-" ? f - i / 12 : f + i / 12; }
+  m = s.match(/^(-?\d+(?:\.\d+)?)\s*"$/); if (m) return parseFloat(m[1]) / 12;
+  m = s.match(/^(-?\d+(?:\.\d+)?)\s*cm$/i); if (m) return parseFloat(m[1]) / 100 * FT_PER_M;
+  m = s.match(/^(-?\d+(?:\.\d+)?)\s*m$/i); if (m) return parseFloat(m[1]) * FT_PER_M;
+  m = s.match(/^(-?\d+(?:\.\d+)?)\s*(?:ft)?$/i); if (m) return displayUnit === "m" && !/ft$/i.test(s) ? parseFloat(m[1]) * FT_PER_M : parseFloat(m[1]);
+  return NaN;
+}
+let toastTimer = null;
+function toast(msg, action) {
+  const t = $("#toast"); t.textContent = msg;
+  if (action) { const b = document.createElement("button"); b.textContent = action.label; b.onclick = () => { t.classList.remove("show"); action.fn(); }; t.appendChild(b); }
+  t.classList.add("show"); clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), action ? 6000 : 2200);
+}
+function findItem(id) { return L.walls.find(w => w.id === id) || L.ceilings.find(c => c.id === id) || null; }
+function isWall(it) { return !!it && Array.isArray(it.segments); }
+function newId(prefix) { let n = 1; while (findItem(prefix + n)) n++; return prefix + n; }
+
+// ---- 2D maths ---------------------------------------------------------
+function polyArea(p) { let a = 0; for (let i = 0; i < p.length; i++) { const q = p[(i + 1) % p.length]; a += p[i][0] * q[1] - q[0] * p[i][1]; } return a / 2; }
+function pointInPoly(x, z, p) {
+  let ins = false;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+    const xi = p[i][0], zi = p[i][1], xj = p[j][0], zj = p[j][1];
+    if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) ins = !ins;
+  }
+  return ins;
+}
+function insetPoly(p, d) {
+  const n = p.length, s = polyArea(p) > 0 ? 1 : -1, lines = [];
+  for (let i = 0; i < n; i++) {
+    const a = p[i], b = p[(i + 1) % n], dx = b[0] - a[0], dz = b[1] - a[1], len = Math.hypot(dx, dz) || 1;
+    const nx = -dz / len * s, nz = dx / len * s;
+    lines.push({ px: a[0] + nx * d, pz: a[1] + nz * d, dx: dx / len, dz: dz / len });
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const l1 = lines[(i - 1 + n) % n], l2 = lines[i], den = l1.dx * l2.dz - l1.dz * l2.dx;
+    if (Math.abs(den) < 1e-6) { out.push([l2.px, l2.pz]); continue; }
+    const t = ((l2.px - l1.px) * l2.dz - (l2.pz - l1.pz) * l2.dx) / den;
+    out.push([l1.px + l1.dx * t, l1.pz + l1.dz * t]);
+  }
+  return out;
+}
+function segsCross(a, b, c, d) {
+  const o = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+  const d1 = o(c, d, a), d2 = o(c, d, b), d3 = o(a, b, c), d4 = o(a, b, d);
+  return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0));
+}
+function polyEdgesCross(A, B) {
+  for (let i = 0; i < A.length; i++) { const a = A[i], b = A[(i + 1) % A.length];
+    for (let j = 0; j < B.length; j++) if (segsCross(a, b, B[j], B[(j + 1) % B.length])) return true; }
+  return false;
+}
+function polysOverlap(A, B) { return polyEdgesCross(A, B) || pointInPoly(A[0][0], A[0][1], B) || pointInPoly(B[0][0], B[0][1], A); }
+function distToSeg(px, pz, a, b) {
+  const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz;
+  const t = l2 ? clamp(((px - a[0]) * dx + (pz - a[1]) * dz) / l2, 0, 1) : 0;
+  return Math.hypot(px - a[0] - t * dx, pz - a[1] - t * dz);
+}
+function rectPoly(x0, x1, z0, z1) { return [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]; }
+
+// ======================================================================
+//  WALL + CEILING GEOMETRY
+// ======================================================================
+// Each panel is a flat 50 cm chord. A section at c° per panel bends c° at every joint inside it;
+// where two sections meet the joint takes the average, so each panel is a chord of its own arc and
+// 36 panels at 5° land exactly on a half circle. Local frame: the pin point at the origin, the run
+// heading +X there, the LED face toward +Z.
+function wallShape(w) {
+  const s = panelFt(), raw = [[0, 0]], tan = [0], bounds = [0];
+  let px = 0, pz = 0, a = 0;
+  (w.segments || []).forEach(sg => {
+    const c = rad(+sg.curveDeg || 0), n = Math.max(0, Math.round(+sg.panels || 0));
+    for (let i = 0; i < n; i++) { const d = a + c / 2; px += s * Math.cos(d); pz += s * Math.sin(d); a += c; raw.push([px, pz]); tan.push(a); }
+    bounds.push(raw.length - 1);
+  });
+  const N = raw.length - 1;
+  let P = raw[0], tau = 0;
+  if (w.pin === "end") { P = raw[N]; tau = tan[N]; }
+  else if (w.pin === "middle" && N > 0) {
+    if (N % 2 === 0) { P = raw[N / 2]; tau = tan[N / 2]; }
+    else { const k = (N - 1) / 2, A = raw[k], B = raw[k + 1]; P = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2]; tau = Math.atan2(B[1] - A[1], B[0] - A[0]); }
+  }
+  const cs = Math.cos(-tau), sn = Math.sin(-tau);
+  const pts = raw.map(q => { const x = q[0] - P[0], z = q[1] - P[1]; return [x * cs - z * sn, x * sn + z * cs]; });
+  // Per-panel face normals and mitred joint normals (for the cabinet's back line).
+  const pn = [];
+  for (let i = 0; i < N; i++) { const dx = pts[i + 1][0] - pts[i][0], dz = pts[i + 1][1] - pts[i][1], l = Math.hypot(dx, dz) || 1; pn.push([-dz / l, dx / l]); }
+  const vn = pts.map((_, i) => {
+    if (!N) return [0, 1];
+    if (i === 0) return pn[0]; if (i === N) return pn[N - 1];
+    const a1 = pn[i - 1], a2 = pn[i], k = 1 + a1[0] * a2[0] + a1[1] * a2[1];
+    return k > 0.2 ? [(a1[0] + a2[0]) / k, (a1[1] + a2[1]) / k] : a2;
+  });
+  const back = pts.map((q, i) => [q[0] - vn[i][0] * WALL_T, q[1] - vn[i][1] * WALL_T]);
+  const chord = N ? Math.hypot(pts[N][0] - pts[0][0], pts[N][1] - pts[0][1]) : 0;
+  let depth = 0;
+  if (N && chord > 0.01) {
+    const ux = (pts[N][0] - pts[0][0]) / chord, uz = (pts[N][1] - pts[0][1]) / chord;
+    pts.forEach(q => { depth = Math.max(depth, Math.abs((q[0] - pts[0][0]) * -uz + (q[1] - pts[0][1]) * ux)); });
+  }
+  const sweep = (w.segments || []).reduce((t, sg) => t + Math.round(+sg.panels || 0) * (+sg.curveDeg || 0), 0);
+  return { pts, back, pn, vn, N, s, chord, depth, sweep, arcLen: N * s, bounds };
+}
+function toWorldFn(x, z, rotDeg) {
+  const c = Math.cos(rad(rotDeg || 0)), s = Math.sin(rad(rotDeg || 0));
+  return q => [x + q[0] * c - q[1] * s, z + q[0] * s + q[1] * c];
+}
+function wallBase(w) { return w.deck && w.deck.on ? (+w.deck.heightFt || 0) : (+w.footingFt || 0); }
+function wallHeight(w) { return Math.max(1, Math.round(+w.panelsHigh || 1)) * panelFt(); }
+// Everything the plan / omens need, in world space.
+function wallGeom(w) {
+  const sh = wallShape(w), W = toWorldFn(w.x, w.z, w.rotationDeg);
+  const pts = sh.pts.map(W), back = sh.back.map(W);
+  const body = sh.N ? pts.concat(back.slice().reverse()) : [];
+  let deck = null;
+  if (w.deck && w.deck.on) { const dl = +w.deck.lengthFt || 0, dd = +w.deck.depthFt || 0; deck = rectPoly(-dl / 2, dl / 2, -dd, 0).map(W); }
+  const c = Math.cos(rad(w.rotationDeg || 0)), s = Math.sin(rad(w.rotationDeg || 0));
+  const nrm = v => [v[0] * c - v[1] * s, v[0] * s + v[1] * c];
+  return Object.assign({}, sh, { wpts: pts, wback: back, body, deck, wpn: sh.pn.map(nrm), wvn: sh.vn.map(nrm), pin: [w.x, w.z], base: wallBase(w), H: wallHeight(w), top: wallBase(w) + wallHeight(w), W });
+}
+function ceilDims(c) {
+  const s = panelFt(), W = Math.max(1, Math.round(+c.panelsWide || 1)) * s, Lg = Math.max(1, Math.round(+c.panelsLong || 1)) * s;
+  return { W, L: Lg, Lp: Lg * Math.cos(rad(c.tiltDeg || 0)) };
+}
+function ceilGeom(c) {
+  const d = ceilDims(c), Wf = toWorldFn(c.x, c.z, c.rotationDeg), t = rad(c.tiltDeg || 0);
+  const poly = rectPoly(-d.W / 2, d.W / 2, -d.Lp / 2, d.Lp / 2).map(Wf);
+  return Object.assign(d, { poly, W2: Wf, low: c.heightFt - Math.abs(Math.sin(t)) * d.L / 2, high: c.heightFt + Math.abs(Math.sin(t)) * d.L / 2 });
+}
+function panelsOfWall(w) { return wallShape(w).N * Math.max(1, Math.round(+w.panelsHigh || 1)); }
+function panelsOfCeil(c) { return Math.max(1, Math.round(+c.panelsWide || 1)) * Math.max(1, Math.round(+c.panelsLong || 1)); }
+
+// ======================================================================
+//  STUDIO GEOMETRY (fixed)
+// ======================================================================
+const LANE_INNER = insetPoly(STUDIO.laneOutline, STUDIO.fireLaneFt);
+const DOORS = STUDIO.doors.map(d => {
+  const S = STUDIO, h = d.width / 2;
+  const ends = d.wall === "east" ? [[S.xMin, d.at - h], [S.xMin, d.at + h]] : d.wall === "west" ? [[S.xMax, d.at - h], [S.xMax, d.at + h]]
+             : d.wall === "north" ? [[d.at - h, S.zFront], [d.at + h, S.zFront]] : [[d.at - h, S.zBack], [d.at + h, S.zBack]];
+  const inward = d.wall === "east" ? [1, 0] : d.wall === "west" ? [-1, 0] : d.wall === "north" ? [0, -1] : [0, 1];
+  return Object.assign({}, d, { ends, inward });
+});
+function partitionSegs() { const p = STUDIO.partition.path, out = []; for (let i = 0; i + 1 < p.length; i++) out.push([p[i], p[i + 1]]); return out; }
+function pillarKeepOut(withClearance) { const p = STUDIO.pillar, h = p.sizeFt / 2 + (withClearance ? p.clearanceFt : 0); return rectPoly(p.x - h, p.x + h, p.z - h, p.z + h); }
+function inLane(x, z) { return pointInPoly(x, z, STUDIO.laneOutline) && !pointInPoly(x, z, LANE_INNER); }
+
+// ======================================================================
+//  OMENS (advisory clash checks; nothing is blocked)
+// ======================================================================
+function computeOmens() {
+  const out = [], S = STUDIO, walls = L.walls.filter(w => w.visible !== false), ceils = L.ceilings.filter(c => c.visible !== false);
+  const G = {}; walls.forEach(w => { G[w.id] = wallGeom(w); });
+  const polysOf = w => [G[w.id].body, G[w.id].deck].filter(p => p && p.length > 2);
+  const outside = p => p.some(q => q[0] < S.xMin - 0.01 || q[0] > S.xMax + 0.01 || q[1] < S.zBack - 0.01 || q[1] > S.zFront + 0.01);
+  walls.forEach(w => {
+    const g = G[w.id], polys = polysOf(w); if (!polys.length) return;
+    if (polys.some(outside)) out.push({ lvl: "bad", id: w.id, text: w.name + " runs through the studio wall" });
+    S.rooms.forEach(r => { const rp = rectPoly(r.x0, r.x1, r.z0, r.z1); if (polys.some(p => polysOverlap(p, rp))) out.push({ lvl: "bad", id: w.id, text: w.name + " cuts into the " + r.name.toLowerCase().replace(/ · wr · wr/, " / washrooms") }); });
+    if (polys.some(p => partitionSegs().some(sg => p.some((q, i) => segsCross(q, p[(i + 1) % p.length], sg[0], sg[1]))))) out.push({ lvl: "bad", id: w.id, text: w.name + " crosses the partition wall" });
+    if (polys.some(p => polysOverlap(p, pillarKeepOut(false)))) out.push({ lvl: "bad", id: w.id, text: w.name + " hits the column" });
+    else if (polys.some(p => polysOverlap(p, pillarKeepOut(true)))) out.push({ lvl: "warn", id: w.id, text: w.name + " is inside the column's 6″ clearance" });
+    if (g.top > S.wallHeightFt) out.push({ lvl: "bad", id: w.id, text: w.name + " is " + fmtLen(g.top) + " tall, taller than the room (" + fmtLen(S.wallHeightFt) + ")" });
+    if (polys.some(p => p.some(q => inLane(q[0], q[1])) || polyEdgesCross(p, LANE_INNER))) out.push({ lvl: "warn", id: w.id, text: w.name + " sits in the " + S.fireLaneFt + "′ fire lane" });
+    ceils.forEach(c => {
+      const cg = ceilGeom(c);
+      if (polysOf(w).some(p => polysOverlap(p, cg.poly)) && g.top > cg.low - 0.05)
+        out.push({ lvl: "bad", id: w.id, text: w.name + " (top " + fmtLen(g.top) + ") is taller than " + c.name + " above it (" + fmtLen(cg.low) + ")" });
+    });
+  });
+  for (let i = 0; i < walls.length; i++) for (let j = i + 1; j < walls.length; j++) {
+    const a = polysOf(walls[i]), b = polysOf(walls[j]);
+    if (a.some(p => b.some(q => polysOverlap(p, q)))) out.push({ lvl: "bad", id: walls[j].id, text: walls[i].name + " and " + walls[j].name + " overlap" });
+  }
+  ceils.forEach(c => {
+    const cg = ceilGeom(c), R = S.ceilingRig;
+    if (outside(cg.poly)) out.push({ lvl: "bad", id: c.id, text: c.name + " hangs past the studio wall" });
+    if (cg.high > R.maxFt + 0.01) out.push({ lvl: "warn", id: c.id, text: c.name + " is above the rig range (" + fmtLen(R.maxFt) + " max)" });
+    if (cg.low < R.minFt - 0.01) out.push({ lvl: "warn", id: c.id, text: c.name + " is below the rig range (" + fmtLen(R.minFt) + " min)" });
+  });
+  const owned = parseInt(store.get("grim.owned", ""), 10), tot = totals().all;
+  if (owned > 0 && tot > owned) out.push({ lvl: "bad", id: null, text: "This layout needs " + (tot - owned) + " more panels than you own" });
+  return out;
+}
+function totals() {
+  const t = { walls: 0, ceilings: 0, all: 0 };
+  L.walls.filter(w => w.visible !== false).forEach(w => { t.walls += panelsOfWall(w); });
+  L.ceilings.filter(c => c.visible !== false).forEach(c => { t.ceilings += panelsOfCeil(c); });
+  t.all = t.walls + t.ceilings; return t;
+}
+
+// ======================================================================
+//  PLAN (2D canvas, true scale)
+// ======================================================================
+const planCv = $("#plan"), planCtx = planCv.getContext("2d");
+const view = { sc: 8, ox: 0, oy: 0 };       // px per ft, screen position of world origin (CSS px)
+let planDirty = true, planHover = null, measure = null;
+const THEMES = {
+  dark: { bg: "#0b0a0d", floor: "#141217", grid1: "rgba(233,226,208,.035)", grid5: "rgba(233,226,208,.07)", grid10: "rgba(233,226,208,.12)",
+    wall: "#8f8798", room: "#1d1a22", roomLine: "#4a4352", roomText: "#857d8d", lane: "#d8b54a", laneFill: "rgba(216,181,74,.06)",
+    pillar: "#6f6876", ghost: "rgba(154,140,208,.85)", body: "#2a2530", face: "#7cf0c5", joint: "rgba(124,240,197,.5)",
+    deck: "#3a332b", deckLine: "#6b5d4a", ceilFill: "rgba(164,147,255,.09)", ceil: "#a493ff", sel: "#ff3b3b", text: "#e9e2d0", dim: "#a39bab",
+    fire: "#2ecc71", door: "#9a93a0", grade: "#b4b9be", measure: "#ffd166", label: "rgba(11,10,13,.82)" },
+  paper: { bg: "#ffffff", floor: "#ffffff", grid1: "rgba(0,0,0,.03)", grid5: "rgba(0,0,0,.07)", grid10: "rgba(0,0,0,.13)",
+    wall: "#222", room: "#efefef", roomLine: "#888", roomText: "#555", lane: "#c08f00", laneFill: "rgba(192,143,0,.08)",
+    pillar: "#555", ghost: "rgba(110,90,190,.8)", body: "#555", face: "#00865a", joint: "rgba(0,134,90,.55)",
+    deck: "#ddd3c4", deckLine: "#8a7a62", ceilFill: "rgba(90,68,208,.07)", ceil: "#5a44d0", sel: "#c00", text: "#111", dim: "#555",
+    fire: "#1a9a50", door: "#777", grade: "#999", measure: "#c07000", label: "rgba(255,255,255,.88)" }
+};
+function w2s(q, v) { v = v || view; return [q[0] * v.sc + v.ox, q[1] * v.sc + v.oy]; }
+function s2w(x, y) { return [(x - view.ox) / view.sc, (y - view.oy) / view.sc]; }
+function fitView(v, W, H, pad) {
+  const S = STUDIO, w = S.xMax - S.xMin, h = S.zFront - S.zBack;
+  v.sc = Math.min((W - pad * 2) / w, (H - pad * 2) / h);
+  v.ox = W / 2 - (S.xMin + w / 2) * v.sc; v.oy = H / 2 - (S.zBack + h / 2) * v.sc;
+  return v;
+}
+function resizePlan() {
+  const r = $("#planWrap").getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  if (!r.width || !r.height) return;
+  planCv.width = Math.round(r.width * dpr); planCv.height = Math.round(r.height * dpr);
+  planCv.style.width = r.width + "px"; planCv.style.height = r.height + "px";
+  if (!view.userMoved) fitView(view, r.width, r.height, 28);
+  planDirty = true;
+}
+
+// Draw the whole plan into ctx (CSS-px space). opts: { print, k (label scale), sel, ghost, hover, measure }
+function drawPlan(ctx, W, H, v, th, opts) {
+  const k = opts.k || 1, S = STUDIO, P = q => w2s(q, v);
+  const line = (pts, close) => { ctx.beginPath(); pts.forEach((q, i) => { const s = P(q); i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]); }); if (close) ctx.closePath(); };
+  const label = (txt, q, o) => {
+    o = o || {}; const s = P(q); ctx.font = (o.bold ? "600 " : "") + Math.round((o.size || 11) * k) + "px system-ui, Segoe UI, Arial, sans-serif";
+    ctx.textAlign = o.align || "center"; ctx.textBaseline = "middle";
+    if (o.box !== false) { const m = ctx.measureText(txt), pw = 4 * k, w = m.width + pw * 2, h = (o.size || 11) * k + 6 * k;
+      const x0 = o.align === "left" ? s[0] - pw : o.align === "right" ? s[0] - w + pw : s[0] - w / 2;
+      ctx.fillStyle = th.label; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x0, s[1] - h / 2, w, h, 3 * k) : ctx.rect(x0, s[1] - h / 2, w, h); ctx.fill(); }
+    ctx.fillStyle = o.color || th.text; ctx.fillText(txt, s[0], s[1]);
+  };
+  ctx.fillStyle = th.bg; ctx.fillRect(0, 0, W, H);
+  // Floor + grid (clipped to the room).
+  ctx.save(); line(rectPoly(S.xMin, S.xMax, S.zBack, S.zFront), true); ctx.fillStyle = th.floor; ctx.fill(); ctx.clip();
+  [[1, th.grid1, 7], [5, th.grid5, 1.5], [10, th.grid10, 0]].forEach(([step, col, minSc]) => {
+    if (v.sc < minSc) return;
+    ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.beginPath();
+    for (let x = Math.ceil(S.xMin / step) * step; x <= S.xMax; x += step) { const a = P([x, S.zBack]), b = P([x, S.zFront]); ctx.moveTo(Math.round(a[0]) + .5, a[1]); ctx.lineTo(Math.round(b[0]) + .5, b[1]); }
+    for (let z = Math.ceil(S.zBack / step) * step; z <= S.zFront; z += step) { const a = P([S.xMin, z]), b = P([S.xMax, z]); ctx.moveTo(a[0], Math.round(a[1]) + .5); ctx.lineTo(b[0], Math.round(b[1]) + .5); }
+    ctx.stroke();
+  });
+  // Fire lane: a tinted band and a dashed line on its inner edge.
+  ctx.beginPath(); [STUDIO.laneOutline, LANE_INNER].forEach(pl => pl.forEach((q, i) => { const s = P(q); i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]); }));
+  ctx.fillStyle = th.laneFill; ctx.fill("evenodd");
+  ctx.setLineDash([8 * k, 6 * k]); ctx.strokeStyle = th.lane; ctx.lineWidth = 1.2 * k; line(LANE_INNER, true); ctx.stroke(); ctx.setLineDash([]);
+  ctx.restore();
+  // Rooms, partition, column.
+  S.rooms.forEach(r => { line(rectPoly(r.x0, r.x1, r.z0, r.z1), true); ctx.fillStyle = th.room; ctx.fill(); ctx.strokeStyle = th.roomLine; ctx.lineWidth = 1 * k; ctx.stroke();
+    label(r.name, [(r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2], { color: th.roomText, box: false, size: 11 }); });
+  ctx.strokeStyle = th.wall; ctx.lineWidth = Math.max(2, 0.4 * v.sc); ctx.lineCap = "butt"; line(STUDIO.partition.path); ctx.stroke();
+  { const p = S.pillar, h = p.sizeFt / 2, c = h + p.clearanceFt;
+    line(rectPoly(p.x - h, p.x + h, p.z - h, p.z + h), true); ctx.fillStyle = th.pillar; ctx.fill();
+    ctx.setLineDash([4 * k, 3 * k]); ctx.strokeStyle = th.lane; ctx.lineWidth = 1 * k; line(rectPoly(p.x - c, p.x + c, p.z - c, p.z + c), true); ctx.stroke(); ctx.setLineDash([]);
+    if (v.sc > 4) label("Column", [p.x, p.z + c + 1.4], { color: th.dim, box: false, size: 10 }); }
+  // Studio walls + doors.
+  ctx.strokeStyle = th.wall; ctx.lineWidth = Math.max(3, 0.6 * v.sc); ctx.lineJoin = "miter"; line(rectPoly(S.xMin, S.xMax, S.zBack, S.zFront), true); ctx.stroke();
+  DOORS.forEach(d => {
+    ctx.strokeStyle = d.type === "fire" ? th.fire : d.type === "grade" ? th.grade : th.door; ctx.lineWidth = Math.max(4, 0.7 * v.sc);
+    line(d.ends); ctx.stroke();
+    if (v.sc > 3.5) { const m = [(d.ends[0][0] + d.ends[1][0]) / 2 + d.inward[0] * 2.2, (d.ends[0][1] + d.ends[1][1]) / 2 + d.inward[1] * 2.2];
+      label(d.label, m, { color: d.type === "fire" ? th.fire : th.dim, box: false, size: 10 }); }
+  });
+  // Ghost of the stage as it stands.
+  if (opts.ghost) {
+    ctx.setLineDash([5 * k, 4 * k]); ctx.strokeStyle = th.ghost; ctx.lineWidth = 1.3 * k;
+    GHOST.walls.forEach(w => { const g = wallGeom(w); if (g.body.length) { line(g.body, true); ctx.stroke(); } if (g.deck) { line(g.deck, true); ctx.stroke(); } });
+    GHOST.ceilings.forEach(c => { line(ceilGeom(c).poly, true); ctx.stroke(); });
+    ctx.setLineDash([]);
+  }
+  // LED walls.
+  const walls = L.walls.filter(w => w.visible !== false), geoms = {};
+  walls.forEach(w => { geoms[w.id] = wallGeom(w); });
+  walls.forEach(w => {
+    const g = geoms[w.id];
+    if (g.deck) { line(g.deck, true); ctx.fillStyle = th.deck; ctx.fill(); ctx.strokeStyle = th.deckLine; ctx.lineWidth = 1 * k; ctx.stroke(); }
+    if (!g.N) return;
+    line(g.body, true); ctx.fillStyle = th.body; ctx.fill();
+    ctx.strokeStyle = th.face; ctx.lineWidth = Math.max(2 * k, 0.16 * v.sc); ctx.lineJoin = "round"; line(g.wpts); ctx.stroke();
+    if (v.sc * g.s > 5) {                                   // panel joints
+      ctx.strokeStyle = th.joint; ctx.lineWidth = 1 * k; ctx.beginPath();
+      g.wpts.forEach((q, i) => { const n = g.wvn[i], a = P(q), b = P([q[0] - n[0] * WALL_T, q[1] - n[1] * WALL_T]); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); });
+      ctx.stroke();
+    }
+    if (g.bounds.length > 2) g.bounds.slice(1, -1).forEach(i => {   // section breaks
+      const s = P(g.wpts[i]); ctx.fillStyle = th.text; ctx.beginPath(); ctx.arc(s[0], s[1], 3 * k, 0, Math.PI * 2); ctx.fill();
+    });
+  });
+  // Ceilings (above the walls, so drawn over them, see-through).
+  L.ceilings.filter(c => c.visible !== false).forEach(c => {
+    const cg = ceilGeom(c);
+    line(cg.poly, true); ctx.fillStyle = th.ceilFill; ctx.fill();
+    ctx.setLineDash([7 * k, 4 * k]); ctx.strokeStyle = th.ceil; ctx.lineWidth = 1.4 * k; ctx.stroke(); ctx.setLineDash([]);
+    if (v.sc * panelFt() > 9) {                              // panel grid, faint
+      ctx.strokeStyle = th.ceilFill.replace(/[\d.]+\)$/, ".35)"); ctx.lineWidth = 1; ctx.beginPath();
+      const nw = Math.round(c.panelsWide), nl = Math.round(c.panelsLong), s = panelFt(), sl = cg.Lp / nl;
+      for (let i = 1; i < nw; i++) { const a = P(cg.W2([-cg.W / 2 + i * s, -cg.Lp / 2])), b = P(cg.W2([-cg.W / 2 + i * s, cg.Lp / 2])); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
+      for (let i = 1; i < nl; i++) { const a = P(cg.W2([-cg.W / 2, -cg.Lp / 2 + i * sl])), b = P(cg.W2([cg.W / 2, -cg.Lp / 2 + i * sl])); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
+      ctx.stroke();
+    }
+  });
+  // Labels: name + size beside each wall's pin on the face side; section callouts.
+  walls.forEach(w => {
+    const g = geoms[w.id]; if (!g.N) return;
+    const isSel = w.id === opts.sel, show = isSel || opts.print || v.sc > 5;
+    if (!show) return;
+    // Beside the middle panel, on the face side, pushed away from the wall (left / right aligned on a side wall).
+    // A selected flat wall has its turn handle out front, so its label steps past the handle.
+    const mi = Math.round(g.N / 2), n = g.wvn[mi] || [0, 1], q = g.wpts[mi], off = isSel && g.depth < 4 && !opts.print ? handleDist(v) + 14 / v.sc : 1.2 + 6 * k / v.sc;
+    const align = n[0] > 0.6 ? "left" : n[0] < -0.6 ? "right" : "center";
+    const lh = 15 * k / v.sc, dz = align === "center" ? (n[1] >= 0 ? lh * 0.7 : -lh * 1.5) : -lh / 2;
+    const at = [q[0] + n[0] * off, q[1] + n[1] * off + dz];
+    label(w.name, at, { bold: true, size: 12, color: isSel ? th.sel : th.text, align });
+    label(g.N + " × " + Math.round(w.panelsHigh) + (Math.abs(g.sweep) > 0.01 ? " · " + fmtDeg(g.sweep) : "") + " · " + fmtLen(g.top) + " tall", [at[0], at[1] + lh], { size: 10, color: th.dim, align });
+    if ((isSel || opts.print) && g.bounds.length > 2) {
+      (w.segments || []).forEach((sg, si) => {
+        const i0 = g.bounds[si], i1 = g.bounds[si + 1]; if (i1 <= i0) return;
+        const mi = Math.round((i0 + i1) / 2), q = g.wpts[mi], n = g.wvn[mi], off = 2.4 + 10 * k / v.sc;
+        label((si + 1) + ": " + Math.round(sg.panels) + " @ " + fmtDeg(+sg.curveDeg || 0), [q[0] - n[0] * off, q[1] - n[1] * off], { size: 10, color: th.face });
+      });
+    }
+  });
+  L.ceilings.filter(c => c.visible !== false).forEach(c => {
+    const isSel = c.id === opts.sel; if (!(isSel || opts.print || v.sc > 5)) return;
+    const cg = ceilGeom(c), at = cg.W2([0, cg.Lp / 2 - 1.4 - 8 * k / v.sc]);
+    label(c.name + " · " + Math.round(c.panelsWide) + " × " + Math.round(c.panelsLong) + " · " + fmtLen(c.heightFt) + (c.tiltDeg ? " · tilt " + fmtDeg(c.tiltDeg) : ""), at, { size: 10, color: isSel ? th.sel : th.ceil });
+  });
+  // Selection: outline, pin, rotate handle and dimensions.
+  const sel = opts.sel && findItem(opts.sel);
+  if (sel && sel.visible !== false && !opts.print) {
+    ctx.strokeStyle = th.sel; ctx.lineWidth = 2;
+    if (isWall(sel)) {
+      const g = geoms[sel.id];
+      if (g.N) { line(g.body, true); ctx.stroke(); }
+      if (g.deck) { line(g.deck, true); ctx.stroke(); }
+      if (g.N && g.chord > 1 && g.depth > 0.5) {               // tip-to-tip + depth (a flat wall's face length says it)
+        ctx.setLineDash([4, 4]); ctx.strokeStyle = th.dim; ctx.lineWidth = 1; line([g.wpts[0], g.wpts[g.N]]); ctx.stroke(); ctx.setLineDash([]);
+        const m = [(g.wpts[0][0] + g.wpts[g.N][0]) / 2, (g.wpts[0][1] + g.wpts[g.N][1]) / 2];
+        label("tip to tip " + fmtLen(g.chord) + (g.depth > 0.5 ? " · depth " + fmtLen(g.depth) : ""), m, { size: 10, color: th.text });
+      }
+      // Run-along length at the two ends.
+      if (g.N) { label("face " + fmtLen(g.arcLen), [g.wpts[g.N][0] + (g.wpts[g.N][0] - g.wpts[g.N - 1][0]) / g.s * 2.2, g.wpts[g.N][1] + (g.wpts[g.N][1] - g.wpts[g.N - 1][1]) / g.s * 2.2], { size: 10, color: th.dim }); }
+    } else {
+      line(ceilGeom(sel).poly, true); ctx.stroke();
+      const cg = ceilGeom(sel);
+      label(fmtLen(cg.W) + " × " + fmtLen(cg.L), cg.W2([0, 0]), { size: 10 });
+    }
+    const hd = handleOf(sel), ps = P([sel.x, sel.z]), hs = P(hd);
+    ctx.strokeStyle = th.sel; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(ps[0], ps[1]); ctx.lineTo(hs[0], hs[1]); ctx.stroke();
+    ctx.fillStyle = th.sel; ctx.beginPath(); ctx.arc(hs[0], hs[1], 7, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(hs[0], hs[1], 3.5, -2.6, 1.6); ctx.stroke();
+    ctx.fillStyle = "#fff"; ctx.strokeStyle = th.sel; ctx.lineWidth = 2;               // pin diamond
+    ctx.beginPath(); ctx.moveTo(ps[0], ps[1] - 6); ctx.lineTo(ps[0] + 6, ps[1]); ctx.lineTo(ps[0], ps[1] + 6); ctx.lineTo(ps[0] - 6, ps[1]); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  // Measure.
+  if (opts.measure) {
+    const a = P(opts.measure.a), b = P(opts.measure.b);
+    ctx.strokeStyle = th.measure; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+    [a, b].forEach(s => { ctx.fillStyle = th.measure; ctx.beginPath(); ctx.arc(s[0], s[1], 3.5, 0, Math.PI * 2); ctx.fill(); });
+    const d = Math.hypot(opts.measure.b[0] - opts.measure.a[0], opts.measure.b[1] - opts.measure.a[1]);
+    label(fmtLen(d), [(opts.measure.a[0] + opts.measure.b[0]) / 2, (opts.measure.a[1] + opts.measure.b[1]) / 2], { bold: true, size: 12, color: th.measure });
+  }
+  // North arrow + scale bar (screen-fixed).
+  ctx.save(); ctx.translate(W - 34 * k, H - 64 * k);
+  ctx.fillStyle = th.dim; ctx.beginPath(); ctx.moveTo(0, 14 * k); ctx.lineTo(-6 * k, -2 * k); ctx.lineTo(0, 2 * k); ctx.lineTo(6 * k, -2 * k); ctx.closePath(); ctx.fill();
+  ctx.font = "600 " + Math.round(10 * k) + "px system-ui, Arial"; ctx.textAlign = "center"; ctx.fillText("N", 0, 26 * k); ctx.restore();
+  { const ft = [1, 2, 5, 10, 20, 50].find(f => f * v.sc > 70 * k) || 50, x0 = 16 * k, y0 = H - 22 * k * (opts.print ? 1 : 2.2);
+    ctx.strokeStyle = th.dim; ctx.lineWidth = 2 * k; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + ft * v.sc, y0); ctx.moveTo(x0, y0 - 4 * k); ctx.lineTo(x0, y0 + 4 * k); ctx.moveTo(x0 + ft * v.sc, y0 - 4 * k); ctx.lineTo(x0 + ft * v.sc, y0 + 4 * k); ctx.stroke();
+    ctx.fillStyle = th.dim; ctx.font = Math.round(10 * k) + "px system-ui, Arial"; ctx.textAlign = "left"; ctx.textBaseline = "bottom"; ctx.fillText(displayUnit === "m" ? (ft * M_PER_FT).toFixed(2) + " m" : ft + "′", x0, y0 - 5 * k); }
+}
+function drawPlanNow() {
+  planDirty = false;
+  const dpr = planCv.width / (parseFloat(planCv.style.width) || 1);
+  planCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawPlan(planCtx, planCv.width / dpr, planCv.height / dpr, view, THEMES.dark, { sel: selId, ghost: showGhost, measure: measure });
+}
+
+// Rotate handle: in front of a wall's face at its pin, behind a ceiling's back edge.
+function handleDist(v) { return Math.max(5, 46 / (v || view).sc); }
+function handleOf(it) {
+  const dist = handleDist();
+  if (isWall(it)) { const n = [-Math.sin(rad(it.rotationDeg || 0)), Math.cos(rad(it.rotationDeg || 0))]; return [it.x + n[0] * dist, it.z + n[1] * dist]; }
+  const cg = ceilGeom(it); return cg.W2([0, -cg.Lp / 2 - dist]);
+}
+function hitTest(q) {
+  const tol = 6 / view.sc;
+  const sel = selId && findItem(selId);
+  if (sel && sel.visible !== false) { const h = handleOf(sel); if (Math.hypot(q[0] - h[0], q[1] - h[1]) < 10 / view.sc) return { id: sel.id, handle: true }; }
+  const walls = L.walls.filter(w => w.visible !== false);
+  // The selected piece wins where pieces overlap, so you can always grab what you picked.
+  const order = walls.slice().reverse().sort((a, b) => (b.id === selId) - (a.id === selId));
+  for (const w of order) {
+    const g = wallGeom(w);
+    if (g.N && (pointInPoly(q[0], q[1], g.body) || g.wpts.some((p, i) => i < g.N && distToSeg(q[0], q[1], p, g.wpts[i + 1]) < tol))) return { id: w.id };
+    if (g.deck && pointInPoly(q[0], q[1], g.deck)) return { id: w.id };
+  }
+  const ceils = L.ceilings.filter(c => c.visible !== false).slice().reverse();
+  for (const c of ceils) if (pointInPoly(q[0], q[1], ceilGeom(c).poly)) return { id: c.id };
+  return null;
+}
+
+// ---- Plan interaction --------------------------------------------------
+let drag = null;   // { kind: "move"|"turn"|"pan"|"measure", ... }
+function snapV(v, free) { return free ? round2(v) : Math.round(v / snapFt) * snapFt; }
+function planPointer(e) { const r = planCv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+planCv.addEventListener("pointerdown", e => {
+  activeView = "plan";
+  const sp = planPointer(e), q = s2w(sp[0], sp[1]);
+  planCv.setPointerCapture(e.pointerId);
+  if (e.button === 1 || e.button === 2) { drag = { kind: "pan", sx: sp[0], sy: sp[1], ox: view.ox, oy: view.oy }; $("#planWrap").classList.add("pan"); return; }
+  if (measuring) { drag = { kind: "measure" }; measure = { a: q, b: q }; planDirty = true; return; }
+  const hit = hitTest(q);
+  if (hit) {
+    if (hit.id !== selId) select(hit.id);
+    const it = findItem(hit.id);
+    if (hit.handle) drag = { kind: "turn", id: it.id, start: it.rotationDeg || 0, moved: false };
+    else drag = { kind: "move", id: it.id, q0: q, x0: it.x, z0: it.z, moved: false };
+  } else {
+    drag = { kind: "pan", sx: sp[0], sy: sp[1], ox: view.ox, oy: view.oy, click: true };
+    $("#planWrap").classList.add("pan");
+  }
+});
+planCv.addEventListener("pointermove", e => {
+  const sp = planPointer(e), q = s2w(sp[0], sp[1]);
+  $("#planReadout").textContent = "x " + fmtLen(q[0]) + " · z " + fmtLen(q[1]);
+  if (!drag) { const h = !measuring && hitTest(q); planCv.style.cursor = measuring ? "" : h ? (h.handle ? "grab" : "move") : ""; return; }
+  if (drag.kind === "pan") { view.ox = drag.ox + sp[0] - drag.sx; view.oy = drag.oy + sp[1] - drag.sy; view.userMoved = true; planDirty = true; return; }
+  if (drag.kind === "measure") { measure.b = e.shiftKey ? q : [Math.round(q[0] * 12) / 12, Math.round(q[1] * 12) / 12]; planDirty = true; return; }
+  const it = findItem(drag.id); if (!it) return;
+  if (drag.kind === "move") {
+    it.x = snapV(drag.x0 + q[0] - drag.q0[0], e.shiftKey); it.z = snapV(drag.z0 + q[1] - drag.q0[1], e.shiftKey);
+    drag.moved = true;
+  } else if (drag.kind === "turn") {
+    let a = deg(Math.atan2(q[1] - it.z, q[0] - it.x)) + (isWall(it) ? -90 : 90);
+    a = e.shiftKey ? Math.round(a) : Math.round(a / 15) * 15;
+    it.rotationDeg = normDeg(a); drag.moved = true;
+  }
+  changed();
+});
+function endDrag(e) {
+  if (!drag) return;
+  if (drag.kind === "pan" && drag.click && e && e.type === "pointerup") {      // a plain click on empty floor deselects
+    const sp = planPointer(e); if (Math.hypot(sp[0] - drag.sx, sp[1] - drag.sy) < 4 && selId) select(null);
+  }
+  if ((drag.kind === "move" || drag.kind === "turn") && drag.moved) commit();
+  drag = null; $("#planWrap").classList.remove("pan");
+}
+planCv.addEventListener("pointerup", endDrag);
+planCv.addEventListener("pointercancel", endDrag);
+planCv.addEventListener("contextmenu", e => e.preventDefault());
+planCv.addEventListener("wheel", e => {
+  e.preventDefault();
+  const sp = planPointer(e), q = s2w(sp[0], sp[1]);
+  view.sc = clamp(view.sc * Math.exp(-clamp(e.deltaY, -200, 200) * 0.0015), 1.5, 90);
+  view.ox = sp[0] - q[0] * view.sc; view.oy = sp[1] - q[1] * view.sc; view.userMoved = true; planDirty = true;
+}, { passive: false });
+function normDeg(a) { a = ((a + 180) % 360 + 360) % 360 - 180; return Math.round(a * 100) / 100 === -180 ? 180 : Math.round(a * 100) / 100; }
+
+// ======================================================================
+//  3D (Three.js): the room, the LED, and a walk camera
+// ======================================================================
+let scene, camera, renderer, raycaster, itemsGroup, dirty3D = true, activeView = "plan";
+const nav = { yaw: 0, pitch: 0 }, navKeys = {};
+function init3D() {
+  if (typeof THREE === "undefined") { $("#threeWrap").insertAdjacentHTML("beforeend", '<p class="empty" style="padding:40px">The volume refuses to rise: Three.js failed to load.</p>'); return; }
+  const wrap = $("#threeWrap");
+  scene = new THREE.Scene(); scene.background = new THREE.Color(0x0d0c10);
+  camera = new THREE.PerspectiveCamera(55, 1, 0.1, 2000); camera.rotation.order = "YXZ";
+  renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  wrap.insertBefore(renderer.domElement, wrap.firstChild);
+  scene.add(new THREE.HemisphereLight(0xe8e2f0, 0x2a2630, 0.85));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.6); dl.position.set(30, 60, 25); scene.add(dl);
+  raycaster = new THREE.Raycaster();
+  buildStudio3D();
+  itemsGroup = new THREE.Group(); scene.add(itemsGroup);
+  setPov("floor");
+  wire3D();
+}
+function buildStudio3D() {
+  const S = STUDIO, g = new THREE.Group(), H = S.wallHeightFt;
+  const w = S.xMax - S.xMin, d = S.zFront - S.zBack, cx = (S.xMin + S.xMax) / 2, cz = (S.zBack + S.zFront) / 2;
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, d), new THREE.MeshStandardMaterial({ color: 0x1b1920, roughness: 0.95 }));
+  floor.position.set(cx, -0.06, cz); g.add(floor);
+  const grid = new THREE.GridHelper(Math.ceil(Math.max(w, d)), Math.ceil(Math.max(w, d)), 0x3a3442, 0x26222c);
+  grid.position.set(cx, 0.005, cz); grid.material.transparent = true; grid.material.opacity = 0.5; g.add(grid);
+  // Walls read solid from inside the room, see-through from outside (handy for flying round it).
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x17151b, roughness: 0.95, side: THREE.FrontSide });
+  const ghostMat = new THREE.MeshBasicMaterial({ color: 0x8a7fa0, transparent: true, opacity: 0.06, side: THREE.BackSide, depthWrite: false });
+  const roomMat = new THREE.MeshStandardMaterial({ color: 0x24202a, roughness: 0.9, side: THREE.FrontSide });
+  function panel(x0, z0, x1, z1, h, nx, nz, mat) {
+    const len = Math.hypot(x1 - x0, z1 - z0); if (len < 0.01) return;
+    const geo = new THREE.PlaneGeometry(len, h);
+    [mat, ghostMat].forEach(m => { const p = new THREE.Mesh(geo, m); p.position.set((x0 + x1) / 2, h / 2, (z0 + z1) / 2); p.rotation.y = Math.atan2(nx, nz); g.add(p); });
+  }
+  panel(S.xMin, S.zFront, S.xMax, S.zFront, H, 0, -1, wallMat);
+  panel(S.xMin, S.zBack, S.xMax, S.zBack, H, 0, 1, wallMat);
+  panel(S.xMin, S.zBack, S.xMin, S.zFront, H, 1, 0, wallMat);
+  panel(S.xMax, S.zBack, S.xMax, S.zFront, H, -1, 0, wallMat);
+  const mats = { door: new THREE.MeshStandardMaterial({ color: 0x4a4650, roughness: 0.7 }), fire: new THREE.MeshStandardMaterial({ color: 0x5e2a2e, roughness: 0.7 }), grade: new THREE.MeshStandardMaterial({ color: 0x5f5b66, roughness: 0.6, metalness: 0.3 }) };
+  DOORS.forEach(dr => {
+    const [a0, a1] = dr.ends, h = dr.heightFt, len = Math.hypot(a1[0] - a0[0], a1[1] - a0[1]);
+    const leaf = new THREE.Mesh(new THREE.PlaneGeometry(len, h), mats[dr.type] || mats.door);
+    leaf.position.set((a0[0] + a1[0]) / 2 + dr.inward[0] * 0.06, h / 2, (a0[1] + a1[1]) / 2 + dr.inward[1] * 0.06); leaf.rotation.y = Math.atan2(dr.inward[0], dr.inward[1]); g.add(leaf);
+    const sign = new THREE.Mesh(new THREE.BoxGeometry(len + 0.3, 0.25, 0.08), new THREE.MeshBasicMaterial({ color: dr.type === "fire" ? 0x2ecc71 : 0x8a8494 }));
+    sign.position.set(leaf.position.x, h + 0.35, leaf.position.z); sign.rotation.y = leaf.rotation.y; g.add(sign);
+  });
+  S.rooms.forEach(r => {
+    panel(r.x0, r.z1, r.x1, r.z1, r.heightFt, 0, 1, roomMat); panel(r.x0, r.z0, r.x0, r.z1, r.heightFt, -1, 0, roomMat); panel(r.x1, r.z0, r.x1, r.z1, r.heightFt, 1, 0, roomMat);
+    const roof = new THREE.Mesh(new THREE.PlaneGeometry(r.x1 - r.x0, r.z1 - r.z0), new THREE.MeshStandardMaterial({ color: 0x1e1b22 }));
+    roof.rotation.x = -Math.PI / 2; roof.position.set((r.x0 + r.x1) / 2, r.heightFt, (r.z0 + r.z1) / 2); g.add(roof);
+  });
+  partitionSegs().forEach(([a0, a1]) => { const dx = a1[0] - a0[0], dz = a1[1] - a0[1]; const n = Math.abs(dx) > Math.abs(dz) ? [0, 1] : [1, 0]; panel(a0[0], a0[1], a1[0], a1[1], S.partition.heightFt, n[0], n[1], roomMat); });
+  const p = S.pillar;
+  const post = new THREE.Mesh(new THREE.BoxGeometry(p.coreSizeFt, H, p.coreSizeFt), new THREE.MeshStandardMaterial({ color: 0x55505c, roughness: 0.9 }));
+  post.position.set(p.x, H / 2, p.coreZ); g.add(post);
+  const wrapM = new THREE.Mesh(new THREE.BoxGeometry(p.sizeFt, p.techHeightFt, p.sizeFt), new THREE.MeshStandardMaterial({ color: 0x2a2630, roughness: 0.8 }));
+  wrapM.position.set(p.x, p.techHeightFt / 2, p.z); g.add(wrapM);
+  const lane = new THREE.Line(new THREE.BufferGeometry().setFromPoints(LANE_INNER.concat([LANE_INNER[0]]).map(q => new THREE.Vector3(q[0], 0.03, q[1]))),
+    new THREE.LineDashedMaterial({ color: 0xd8b54a, dashSize: 1.2, gapSize: 0.8 }));
+  lane.computeLineDistances(); g.add(lane);
+  g.traverse(o => { o.raycast = function () {}; });
+  scene.add(g);
+}
+const M3 = typeof THREE === "undefined" ? {} : {
+  led: new THREE.MeshStandardMaterial({ color: 0x0f1a17, emissive: 0x0b2a22, roughness: 0.55, metalness: 0.1, side: THREE.DoubleSide }),
+  ledSel: new THREE.MeshStandardMaterial({ color: 0x1a0f11, emissive: 0x3a0c12, roughness: 0.55, metalness: 0.1, side: THREE.DoubleSide }),
+  shell: new THREE.MeshStandardMaterial({ color: 0x1c1a20, roughness: 0.8, metalness: 0.2, side: THREE.DoubleSide }),
+  deck: new THREE.MeshStandardMaterial({ color: 0x4a4036, roughness: 0.95 }),
+  frame: new THREE.MeshStandardMaterial({ color: 0x8a8394, roughness: 0.6, metalness: 0.3 }),
+  grid: new THREE.LineBasicMaterial({ color: 0x2f7a62, transparent: true, opacity: 0.65 }),
+  gridSel: new THREE.LineBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.8 }),
+  rig: new THREE.LineBasicMaterial({ color: 0x4a4452 })
+};
+function disposeTree(o) { o.traverse(n => { if (n.geometry) n.geometry.dispose(); }); }
+function rebuild3D() {
+  dirty3D = false; if (!itemsGroup) return;
+  while (itemsGroup.children.length) { const c = itemsGroup.children.pop(); disposeTree(c); }
+  L.walls.forEach(w => { if (w.visible !== false) itemsGroup.add(wall3D(w, w.id === selId)); });
+  L.ceilings.forEach(c => { if (c.visible !== false) itemsGroup.add(ceil3D(c, c.id === selId)); });
+}
+function wall3D(w, sel) {
+  const sh = wallShape(w), y0 = wallBase(w), H = wallHeight(w), g = new THREE.Group();
+  g.position.set(w.x, 0, w.z); g.rotation.y = -rad(w.rotationDeg || 0);
+  if (w.deck && w.deck.on) {
+    const dl = +w.deck.lengthFt || 0.1, dd = +w.deck.depthFt || 0.1, dh = +w.deck.heightFt || 0.1;
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(dl, dh, dd), M3.deck); deck.position.set(0, dh / 2, -dd / 2); g.add(deck);
+  }
+  if (sh.N) {
+    const F = sh.pts, B = sh.back, front = [], shell = [], quad = (arr, a, b, c, d) => arr.push(...a, ...b, ...c, ...a, ...c, ...d);
+    const v = (q, y) => [q[0], y, q[1]];
+    for (let i = 0; i < sh.N; i++) {
+      quad(front, v(F[i], y0), v(F[i + 1], y0), v(F[i + 1], y0 + H), v(F[i], y0 + H));
+      quad(shell, v(B[i + 1], y0), v(B[i], y0), v(B[i], y0 + H), v(B[i + 1], y0 + H));
+      quad(shell, v(F[i], y0 + H), v(F[i + 1], y0 + H), v(B[i + 1], y0 + H), v(B[i], y0 + H));
+      quad(shell, v(F[i + 1], y0), v(F[i], y0), v(B[i], y0), v(B[i + 1], y0));
+    }
+    [0, sh.N].forEach(i => quad(shell, v(F[i], y0), v(B[i], y0), v(B[i], y0 + H), v(F[i], y0 + H)));
+    const mk = (arr, mat) => { const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(arr, 3)); geo.computeVertexNormals(); return new THREE.Mesh(geo, mat); };
+    const fm = mk(front, sel ? M3.ledSel : M3.led); fm.userData.itemId = w.id; g.add(fm);
+    const sm = mk(shell, M3.shell); sm.userData.itemId = w.id; g.add(sm);
+    if (y0 > 0.05 && !(w.deck && w.deck.on)) {             // footing under a floor-standing wall
+      const ft = []; for (let i = 0; i < sh.N; i++) { quad(ft, v(F[i], 0), v(F[i + 1], 0), v(F[i + 1], y0), v(F[i], y0)); }
+      g.add(mk(ft, M3.shell));
+    }
+    // Panel grid on the face.
+    const ln = [], rows = Math.round(+w.panelsHigh || 1), o = 0.02;
+    F.forEach((q, i) => { const n = sh.vn[i]; ln.push(q[0] + n[0] * o, y0, q[1] + n[1] * o, q[0] + n[0] * o, y0 + H, q[1] + n[1] * o); });
+    for (let r = 0; r <= rows; r++) { const y = y0 + r * sh.s; for (let i = 0; i < sh.N; i++) { const a = F[i], b = F[i + 1], n = sh.pn[i]; ln.push(a[0] + n[0] * o, y, a[1] + n[1] * o, b[0] + n[0] * o, y, b[1] + n[1] * o); } }
+    const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.Float32BufferAttribute(ln, 3));
+    g.add(new THREE.LineSegments(lg, sel ? M3.gridSel : M3.grid));
+  }
+  g.traverse(n => { if (n.isMesh) n.userData.itemId = w.id; });
+  return g;
+}
+function ceil3D(c, sel) {
+  const d = ceilDims(c), g = new THREE.Group(), inner = new THREE.Group();
+  g.position.set(c.x, c.heightFt, c.z); g.rotation.y = -rad(c.rotationDeg || 0); inner.rotation.x = -rad(c.tiltDeg || 0); g.add(inner);
+  const geo = new THREE.PlaneGeometry(d.W, d.L); geo.rotateX(Math.PI / 2);
+  const face = new THREE.Mesh(geo, sel ? M3.ledSel : M3.led); inner.add(face);
+  const fw = 0.33, fh = 0.4;
+  [[d.W + fw * 2, d.L / 2 + fw / 2, true], [d.W + fw * 2, -(d.L / 2 + fw / 2), true], [d.L, d.W / 2 + fw / 2, false], [d.L, -(d.W / 2 + fw / 2), false]].forEach(([len, off, ax]) => {
+    const r = new THREE.Mesh(new THREE.BoxGeometry(ax ? len : fw, fh, ax ? fw : len), M3.frame); r.position.set(ax ? 0 : off, fh / 2, ax ? off : 0); inner.add(r);
+  });
+  const ln = [], s = panelFt(), nw = Math.round(c.panelsWide), nl = Math.round(c.panelsLong), y = -0.02;
+  for (let i = 0; i <= nw; i++) ln.push(-d.W / 2 + i * s, y, -d.L / 2, -d.W / 2 + i * s, y, d.L / 2);
+  for (let j = 0; j <= nl; j++) ln.push(-d.W / 2, y, -d.L / 2 + j * s, d.W / 2, y, -d.L / 2 + j * s);
+  const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.Float32BufferAttribute(ln, 3));
+  inner.add(new THREE.LineSegments(lg, sel ? M3.gridSel : M3.grid));
+  // Rigging lines up to the motors so the hang height reads.
+  const mt = STUDIO.ceilingRig.motorFt - c.heightFt;
+  if (mt > 0.2) [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([sx, sz]) => {
+    const lgeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(sx * d.W / 2, 0, sz * d.L / 2), new THREE.Vector3(sx * d.W / 2, mt, sz * d.L / 2)]);
+    g.add(new THREE.Line(lgeo, M3.rig));
+  });
+  g.traverse(n => { if (n.isMesh) n.userData.itemId = c.id; });
+  return g;
+}
+function setPov(which) {
+  if (!camera) return;
+  const tgt = which === "high" ? [0, 0, -2] : [0, 7.5, -8];
+  if (which === "high") camera.position.set(38, 46, 46); else camera.position.set(0, 6.5, 38);
+  const dx = tgt[0] - camera.position.x, dy = tgt[1] - camera.position.y, dz = tgt[2] - camera.position.z;
+  nav.yaw = Math.atan2(-dx, -dz); nav.pitch = Math.atan2(dy, Math.hypot(dx, dz));
+  camera.rotation.set(nav.pitch, nav.yaw, 0);
+}
+function wire3D() {
+  const el = renderer.domElement;
+  let look = null;
+  el.addEventListener("pointerdown", e => { activeView = "3d"; el.setPointerCapture(e.pointerId); look = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY }; });
+  el.addEventListener("pointermove", e => {
+    if (!look) return;
+    const k = 0.25 * Math.PI / 180;
+    nav.yaw -= (e.clientX - look.x) * k; nav.pitch = clamp(nav.pitch - (e.clientY - look.y) * k, -1.48, 1.48);
+    look.x = e.clientX; look.y = e.clientY; camera.rotation.set(nav.pitch, nav.yaw, 0);
+  });
+  el.addEventListener("pointerup", e => {
+    if (look && Math.hypot(e.clientX - look.sx, e.clientY - look.sy) < 4) {      // a click, not a look: pick
+      const r = el.getBoundingClientRect(), m = new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      raycaster.setFromCamera(m, camera);
+      const hit = raycaster.intersectObjects(itemsGroup.children, true).find(h => h.object.userData.itemId);
+      select(hit ? hit.object.userData.itemId : null);
+    }
+    look = null;
+  });
+  el.addEventListener("wheel", e => {
+    e.preventDefault(); const f = new THREE.Vector3(); camera.getWorldDirection(f);
+    camera.position.addScaledVector(f, -clamp(e.deltaY, -300, 300) * 0.03 * (e.shiftKey ? 3 : 1)); camera.position.y = clamp(camera.position.y, 0.5, 200);
+  }, { passive: false });
+  el.addEventListener("pointerenter", () => { activeView = "3d"; });
+  $("#planWrap").addEventListener("pointerenter", () => { activeView = "plan"; });
+  $("#povBtn").addEventListener("click", () => setPov("floor"));
+  $("#highBtn").addEventListener("click", () => setPov("high"));
+}
+function updateNav(dt) {
+  const k = navKeys, run = k.ShiftLeft || k.ShiftRight ? 3 : 1;
+  const fwd = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), side = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), up = (k.KeyE ? 1 : 0) - (k.KeyQ ? 1 : 0);
+  const turn = (k.ArrowLeft ? 1 : 0) - (k.ArrowRight ? 1 : 0), pitch = (k.ArrowUp ? 1 : 0) - (k.ArrowDown ? 1 : 0);
+  if (!fwd && !side && !up && !turn && !pitch) return;
+  if (turn) nav.yaw += turn * rad(60) * dt;
+  if (pitch) nav.pitch = clamp(nav.pitch + pitch * rad(45) * dt, -1.48, 1.48);
+  const p = camera.position;
+  if (fwd || side) { const sp = 8 * run * dt / Math.hypot(fwd, side); p.x += (-Math.sin(nav.yaw) * fwd + Math.cos(nav.yaw) * side) * sp; p.z += (-Math.cos(nav.yaw) * fwd - Math.sin(nav.yaw) * side) * sp; }
+  if (up) p.y = clamp(p.y + up * 5 * run * dt, 0.5, 200);
+  camera.rotation.set(nav.pitch, nav.yaw, 0);
+}
+function resize3D() {
+  if (!renderer) return;
+  const r = $("#threeWrap").getBoundingClientRect(); if (!r.width || !r.height) return;
+  renderer.setSize(r.width, r.height); camera.aspect = r.width / r.height; camera.updateProjectionMatrix();
+}
+
+// ======================================================================
+//  SIDE PANEL
+// ======================================================================
+const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.9M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/></svg>';
+function fld(id, f, t, val, lbl, extra) {
+  return '<label>' + lbl + '<input data-id="' + id + '" data-f="' + f + '" data-t="' + t + '" value="' + escapeHtml(val) + '" ' + (t === "int" || t === "deg" || t === "num" ? 'inputmode="decimal"' : 'spellcheck="false"') + (extra || "") + '></label>';
+}
+function wallCard(w) {
+  const sel = w.id === selId, hid = w.visible === false, sh = wallShape(w);
+  let h = '<article class="item' + (sel ? " sel" : "") + (hid ? " hid" : "") + '" data-item="' + w.id + '"><header data-act="select">' +
+    '<i class="dot' + (w.deck && w.deck.on ? " deck" : "") + '"></i><input class="nm" data-id="' + w.id + '" data-f="name" data-t="text" value="' + escapeHtml(w.name) + '" aria-label="Name" spellcheck="false" tabindex="' + (sel ? 0 : -1) + '">' +
+    '<span class="sub num" data-o="' + w.id + ':sub">' + sh.N + ' × ' + Math.round(w.panelsHigh) + '</span>' +
+    '<button class="eye" data-act="vis" title="' + (hid ? "Show" : "Hide") + '" aria-label="' + (hid ? "Show" : "Hide") + '">' + (hid ? EYE_OFF : EYE) + '</button></header>';
+  if (sel) {
+    const deckOn = w.deck && w.deck.on;
+    h += '<div class="body"><h5>Size</h5><div class="fields">' + fld(w.id, "panelsHigh", "int", Math.round(w.panelsHigh), "Panels high") +
+      (deckOn ? '<label>Base<input value="on deck" disabled></label>' : fld(w.id, "footingFt", "len", lenInputVal(w.footingFt || 0), "Footing")) +
+      '<label>Panels wide<input data-o="' + w.id + ':wide" value="' + sh.N + '" disabled></label></div>' +
+      '<h5>Sections <small>curve = degrees between neighbouring panels</small></h5><table class="secs"><thead><tr><th>#</th><th>Panels</th><th>Curve °</th><th style="text-align:right">Arc</th><th></th></tr></thead><tbody>';
+    w.segments.forEach((sg, i) => {
+      h += '<tr><td>' + (i + 1) + '</td><td><input data-id="' + w.id + '" data-f="segments.' + i + '.panels" data-t="int" value="' + Math.round(sg.panels) + '" inputmode="numeric" aria-label="Section ' + (i + 1) + ' panels"></td>' +
+        '<td><input data-id="' + w.id + '" data-f="segments.' + i + '.curveDeg" data-t="deg" value="' + (+sg.curveDeg || 0) + '" inputmode="decimal" aria-label="Section ' + (i + 1) + ' curve in degrees per panel"></td>' +
+        '<td class="arc num" data-o="' + w.id + ':arc' + i + '">' + fmtDeg(Math.round(sg.panels) * (+sg.curveDeg || 0)) + '</td>' +
+        '<td>' + (w.segments.length > 1 ? '<button data-act="secDel" data-i="' + i + '" title="Remove section ' + (i + 1) + '" aria-label="Remove section ' + (i + 1) + '">×</button>' : '') + '</td></tr>';
+    });
+    h += '</tbody></table><div class="btnrow"><button data-act="secAdd">+ Section</button><button data-act="secSplit" title="Split the last section in two">Split last</button>' +
+      '<select data-act="preset" aria-label="Apply a preset shape"><option value="">Preset shape…</option>' + PRESETS.map((p, i) => '<option value="' + i + '">' + p.name + '</option>').join("") + '</select></div>' +
+      '<dl class="stats" data-o="' + w.id + ':stats">' + wallStatsHTML(w, sh) + '</dl>' +
+      '<h5>Placement <small>X / Z is the pinned point</small></h5>' +
+      '<div class="btnrow" style="margin:0 0 8px;align-items:center"><span style="color:var(--ash);font-size:12px">Pin</span><div class="seg sm" role="group" aria-label="Pinned point">' +
+      ["start", "middle", "end"].map(p => '<button data-act="pin" data-pin="' + p + '" class="' + (w.pin === p ? "active" : "") + '" title="Keep the ' + p + ' of the wall fixed while you edit sections">' + p[0].toUpperCase() + p.slice(1) + '</button>').join("") + '</div></div>' +
+      '<div class="fields">' + fld(w.id, "x", "len", lenInputVal(w.x), "X (east → west)") + fld(w.id, "z", "len", lenInputVal(w.z), "Z (south → north)") + fld(w.id, "rotationDeg", "deg", normDeg(w.rotationDeg || 0), "Turn °") + '</div>' +
+      '<label class="chk"><input type="checkbox" data-id="' + w.id + '" data-f="deck.on" data-t="bool"' + (deckOn ? " checked" : "") + '> Stands on a rolling deck</label>' +
+      (deckOn ? '<div class="fields">' + fld(w.id, "deck.lengthFt", "len", lenInputVal(w.deck.lengthFt), "Deck length") + fld(w.id, "deck.depthFt", "len", lenInputVal(w.deck.depthFt), "Deck depth") + fld(w.id, "deck.heightFt", "len", lenInputVal(w.deck.heightFt), "Deck height") + '</div>' : '') +
+      '<div class="btnrow"><button data-act="square" title="Turn the wall so its longest flat section runs square to the room">Square up</button>' +
+      '<button data-act="centre" title="Slide the wall east / west so it is centred on the volume axis (x = 0)">Centre</button>' +
+      '<button data-act="flip" title="Turn the LED face to the other side, same footprint">Flip face</button>' +
+      '<button data-act="mirror" title="Mirror the shape end for end (a left hockey stick becomes a right one)">Mirror</button></div>' +
+      '<div class="btnrow"><button data-act="dup">Duplicate</button><button class="danger push" data-act="del">Delete</button></div></div>';
+  }
+  return h + '</article>';
+}
+function wallStatsHTML(w, sh) {
+  const top = wallBase(w) + wallHeight(w);
+  return '<dt>Panels</dt><dd>' + (sh.N * Math.round(w.panelsHigh)) + '</dd>' +
+    '<dt>Face length</dt><dd>' + fmtLen(sh.arcLen) + '</dd>' +
+    '<dt>Tip to tip</dt><dd>' + fmtLen(sh.chord) + '</dd>' +
+    '<dt>Depth</dt><dd>' + fmtLen(sh.depth) + '</dd>' +
+    '<dt>Total curve</dt><dd>' + fmtDeg(sh.sweep) + '</dd>' +
+    '<dt>LED height</dt><dd>' + fmtLen(wallHeight(w)) + ' (top at ' + fmtLen(top) + ')</dd>';
+}
+function ceilCard(c) {
+  const sel = c.id === selId, hid = c.visible === false, d = ceilDims(c);
+  let h = '<article class="item' + (sel ? " sel" : "") + (hid ? " hid" : "") + '" data-item="' + c.id + '"><header data-act="select">' +
+    '<i class="dot ceil"></i><input class="nm" data-id="' + c.id + '" data-f="name" data-t="text" value="' + escapeHtml(c.name) + '" aria-label="Name" spellcheck="false" tabindex="' + (sel ? 0 : -1) + '">' +
+    '<span class="sub num" data-o="' + c.id + ':sub">' + Math.round(c.panelsWide) + ' × ' + Math.round(c.panelsLong) + ' · ' + fmtLen(c.heightFt) + '</span>' +
+    '<button class="eye" data-act="vis" title="' + (hid ? "Show" : "Hide") + '" aria-label="' + (hid ? "Show" : "Hide") + '">' + (hid ? EYE_OFF : EYE) + '</button></header>';
+  if (sel) {
+    const R = STUDIO.ceilingRig;
+    h += '<div class="body"><h5>Size</h5><div class="fields">' + fld(c.id, "panelsWide", "int", Math.round(c.panelsWide), "Panels wide") + fld(c.id, "panelsLong", "int", Math.round(c.panelsLong), "Panels long") +
+      fld(c.id, "heightFt", "len", lenInputVal(c.heightFt), "Height") + '</div>' +
+      '<dl class="stats" data-o="' + c.id + ':stats">' + ceilStatsHTML(c, d) + '</dl>' +
+      '<h5>Placement <small>X / Z is the centre · rig ' + fmtLen(R.minFt) + '–' + fmtLen(R.maxFt) + '</small></h5><div class="fields">' +
+      fld(c.id, "x", "len", lenInputVal(c.x), "X (east → west)") + fld(c.id, "z", "len", lenInputVal(c.z), "Z (south → north)") + fld(c.id, "rotationDeg", "deg", normDeg(c.rotationDeg || 0), "Turn °") + '</div>' +
+      '<div class="fields two" style="margin-top:6px">' + fld(c.id, "tiltDeg", "deg", c.tiltDeg || 0, "Tilt ° (+ lifts the north edge)") + '</div>' +
+      '<div class="btnrow"><button data-act="centre" title="Centre on the volume axis (x = 0)">Centre</button><button data-act="dup">Duplicate</button><button class="danger push" data-act="del">Delete</button></div></div>';
+  }
+  return h + '</article>';
+}
+function ceilStatsHTML(c, d) {
+  return '<dt>Panels</dt><dd>' + panelsOfCeil(c) + '</dd><dt>Size</dt><dd>' + fmtLen(d.W) + ' × ' + fmtLen(d.L) + '</dd>' +
+    '<dt>Clear to motors</dt><dd>' + fmtLen(Math.max(0, STUDIO.ceilingRig.motorFt - c.heightFt)) + '</dd>';
+}
+function renderSide() {
+  $("#wallList").innerHTML = L.walls.length ? L.walls.map(wallCard).join("") : '<p class="empty">No walls. Bleak, even by our standards.</p>';
+  $("#ceilList").innerHTML = L.ceilings.length ? L.ceilings.map(ceilCard).join("") : '<p class="empty">No ceilings. Open to the heavens.</p>';
+  renderSummary();
+  if (document.activeElement !== $("#layoutName")) $("#layoutName").value = L.name || "";
+}
+function renderSummary() {
+  const t = totals();
+  $("#totals").innerHTML = '<div class="tot"><b class="num">' + t.walls + '</b><span>wall panels</span></div><div class="tot"><b class="num">' + t.ceilings + '</b><span>ceiling panels</span></div><div class="tot"><b class="num">' + t.all + '</b><span>total</span></div>';
+  const owned = parseInt(store.get("grim.owned", ""), 10);
+  $("#ownedOut").innerHTML = owned > 0 ? (t.all <= owned ? '<span class="ok">' + (owned - t.all) + ' spare</span>' : '<span class="short">' + (t.all - owned) + ' short</span>') : '';
+  const om = computeOmens();
+  $("#omens").innerHTML = om.length ? om.map(o => '<li class="' + (o.lvl === "warn" ? "warn" : "") + '" data-id="' + (o.id || "") + '"><i>' + (o.lvl === "warn" ? "⚠" : "☠") + '</i><span>' + escapeHtml(o.text) + '</span></li>').join("")
+    : '<li class="clear"><i>✓</i><span>No omens. Everything fits the room.</span></li>';
+}
+// Live readouts without rebuilding the cards (keeps focus while typing / dragging).
+function updateReadouts() {
+  const it = selId && findItem(selId);
+  if (it) {
+    if (isWall(it)) {
+      const sh = wallShape(it);
+      const set = (k, html) => { const el = document.querySelector('[data-o="' + it.id + ':' + k + '"]'); if (el) { if (el.tagName === "INPUT") el.value = html; else el.innerHTML = html; } };
+      set("sub", sh.N + " × " + Math.round(it.panelsHigh)); set("wide", sh.N); set("stats", wallStatsHTML(it, sh));
+      it.segments.forEach((sg, i) => set("arc" + i, fmtDeg(Math.round(sg.panels) * (+sg.curveDeg || 0))));
+    } else {
+      const s = document.querySelector('[data-o="' + it.id + ':sub"]'); if (s) s.textContent = Math.round(it.panelsWide) + " × " + Math.round(it.panelsLong) + " · " + fmtLen(it.heightFt);
+      const st = document.querySelector('[data-o="' + it.id + ':stats"]'); if (st) st.innerHTML = ceilStatsHTML(it, ceilDims(it));
+    }
+    document.querySelectorAll('input[data-id="' + it.id + '"]').forEach(inp => { if (inp !== document.activeElement) inp.value = fieldDisplay(it, inp.dataset.f, inp.dataset.t); });
+  }
+  renderSummary();
+}
+function getPath(o, path) { return path.split(".").reduce((a, k) => a == null ? a : a[k], o); }
+function setPath(o, path, v) { const ks = path.split("."), last = ks.pop(); ks.reduce((a, k) => a[k], o)[last] = v; }
+function fieldDisplay(it, f, t) {
+  const v = getPath(it, f);
+  if (t === "len") return lenInputVal(+v || 0);
+  if (t === "int") return String(Math.round(v));
+  if (t === "deg") return String(f === "rotationDeg" ? normDeg(+v || 0) : (+v || 0));
+  return v == null ? "" : String(v);
+}
+const LIMITS = { panelsHigh: [1, 60], panels: [1, 400], panelsWide: [1, 200], panelsLong: [1, 200], curveDeg: [-45, 45], tiltDeg: [-45, 45], heightFt: [0, 60] };
+function parseField(inp) {
+  const t = inp.dataset.t, f = inp.dataset.f, key = f.split(".").pop(), lim = LIMITS[key];
+  if (t === "bool") return inp.checked;
+  if (t === "text") return inp.value;
+  let v = t === "len" ? parseLen(inp.value) : parseFloat(inp.value);
+  if (!isFinite(v)) return undefined;
+  if (t === "int") v = Math.round(v);
+  if (key === "lengthFt" || key === "depthFt") v = Math.max(0.5, v);
+  if (key === "heightFt" && f.indexOf("deck") === 0) v = Math.max(0.1, v);
+  if (lim) v = clamp(v, lim[0], lim[1]);
+  if (t === "deg" && key === "rotationDeg") v = normDeg(v);
+  return t === "len" ? round2(v) : v;
+}
+function wireSide() {
+  const side = $("#side");
+  side.addEventListener("input", e => {
+    const inp = e.target; if (!inp.dataset || !inp.dataset.f) return;
+    const it = findItem(inp.dataset.id); if (!it) return;
+    const v = parseField(inp); if (v === undefined) return;
+    if (inp.dataset.t === "bool") return;            // handled on change (rebuilds the card)
+    setPath(it, inp.dataset.f, v); changed(true);
+  });
+  side.addEventListener("change", e => {
+    const inp = e.target; if (!inp.dataset || !inp.dataset.f) return;
+    const it = findItem(inp.dataset.id); if (!it) return;
+    const v = parseField(inp);
+    if (v !== undefined) setPath(it, inp.dataset.f, v);
+    if (inp.dataset.t === "bool") { changed(); commit(); renderSide(); return; }
+    inp.value = fieldDisplay(it, inp.dataset.f, inp.dataset.t);
+    changed(); commit();
+  });
+  side.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.tagName === "INPUT") e.target.blur(); });
+  side.addEventListener("click", e => {
+    const om = e.target.closest(".omens li[data-id]"); if (om && om.dataset.id) { select(om.dataset.id); focusOn(om.dataset.id); return; }
+    const a = e.target.closest("[data-act]"); if (!a || a.tagName === "SELECT") return;
+    const card = e.target.closest("[data-item]"), it = card && findItem(card.dataset.item); if (!it) return;
+    const act = a.dataset.act;
+    if (act === "select") { if (e.target.closest("input,button") && e.target.closest("input,button") !== a) return; if (it.id !== selId) select(it.id); return; }
+    e.stopPropagation();
+    if (act === "vis") { it.visible = it.visible === false; changed(); commit(); renderSide(); return; }
+    if (act === "del") return removeItem(it.id);
+    if (act === "dup") return duplicate(it.id);
+    if (act === "centre") { centreItem(it); return done(); }
+    if (act === "secAdd") { it.segments.push({ panels: 10, curveDeg: 0 }); return done(true); }
+    if (act === "secDel") { it.segments.splice(+a.dataset.i, 1); return done(true); }
+    if (act === "secSplit") { const s = it.segments[it.segments.length - 1]; if (s.panels < 2) return; const h = Math.floor(s.panels / 2); s.panels -= h; it.segments.push({ panels: h, curveDeg: s.curveDeg }); return done(true); }
+    if (act === "pin") { repin(it, a.dataset.pin); return done(true); }
+    if (act === "square") { squareUp(it); return done(); }
+    if (act === "flip") { flipFace(it); return done(true); }
+    if (act === "mirror") { mirrorWall(it); return done(true); }
+  });
+  side.addEventListener("change", e => {
+    const s = e.target.closest('select[data-act="preset"]'); if (!s || s.value === "") return;
+    const it = findItem(s.closest("[data-item]").dataset.item), p = PRESETS[+s.value], c0 = bboxCentre(it);
+    it.segments = deepClone(p.segments);
+    if (p.segments.length > 1 || p.segments[0].curveDeg === 0) squareUp(it);
+    const c1 = bboxCentre(it); it.x = round2(it.x + c0[0] - c1[0]); it.z = round2(it.z + c0[1] - c1[1]);   // reshape in place
+    nudgeIntoRoom(it);
+    done(true); toast("Shaped as " + p.name);
+  });
+  $("#ownedIn").value = store.get("grim.owned", "");
+  $("#ownedIn").addEventListener("input", e => { const v = parseInt(e.target.value, 10); if (v > 0) store.set("grim.owned", String(v)); else store.del("grim.owned"); renderSummary(); });
+  $("#layoutName").addEventListener("change", e => { L.name = e.target.value.trim() || "Untitled layout"; e.target.value = L.name; commit(); });
+  $("#layoutName").addEventListener("keydown", e => { if (e.key === "Enter") e.target.blur(); });
+  $("#addWall").addEventListener("click", () => addItem("wall"));
+  $("#addMobile").addEventListener("click", () => addItem("mobile"));
+  $("#addCeil").addEventListener("click", () => addItem("ceil"));
+}
+function done(rebuild) { changed(); commit(); if (rebuild) renderSide(); else updateReadouts(); }
+
+// ---- Wall operations ---------------------------------------------------
+// Re-pin without moving anything: put the new pin where that point already is, heading the same way.
+function repin(w, pin) {
+  if (w.pin === pin) return;
+  const before = wallGeom(w);
+  const sh1 = wallShape(Object.assign({}, w, { pin: pin }));
+  // Find where the start sits in the new local frame, then solve for x, z, rot from the world start + start tangent.
+  const a = before.wpts[0], b = before.wpts[1] || before.wpts[0];
+  const la = sh1.pts[0], lb = sh1.pts[1] || sh1.pts[0];
+  const rot = Math.atan2(b[1] - a[1], b[0] - a[0]) - Math.atan2(lb[1] - la[1], lb[0] - la[0]);
+  const c = Math.cos(rot), s = Math.sin(rot);
+  w.pin = pin; w.rotationDeg = normDeg(deg(rot));
+  w.x = round2(a[0] - (la[0] * c - la[1] * s)); w.z = round2(a[1] - (la[0] * s + la[1] * c));
+}
+function squareUp(w) {
+  const g = wallGeom(w); if (!g.N) return;
+  // The longest flat section; failing that, the longest section (squared by its tip-to-tip line).
+  const best = (w.segments || []).map((sg, i) => ({ i, n: Math.round(sg.panels), flat: Math.abs(+sg.curveDeg || 0) < 1e-6 }))
+    .sort((a, b) => (b.flat - a.flat) || (b.n - a.n))[0];
+  const i0 = g.bounds[best.i], i1 = g.bounds[best.i + 1]; if (i1 <= i0) return;
+  const a = g.wpts[i0], b = g.wpts[i1], ang = deg(Math.atan2(b[1] - a[1], b[0] - a[0]));
+  const delta = Math.round(ang / 90) * 90 - ang;
+  w.rotationDeg = normDeg((w.rotationDeg || 0) + delta);
+}
+function flipFace(w) {
+  w.segments = w.segments.slice().reverse().map(s => ({ panels: s.panels, curveDeg: -(+s.curveDeg || 0) }));
+  w.pin = w.pin === "start" ? "end" : w.pin === "end" ? "start" : w.pin;
+  w.rotationDeg = normDeg((w.rotationDeg || 0) + 180);
+}
+function mirrorWall(w) {
+  w.segments = w.segments.slice().reverse();
+  w.pin = w.pin === "start" ? "end" : w.pin === "end" ? "start" : w.pin;
+}
+function bboxCentre(w) {
+  const g = wallGeom(w), pts = g.body.length ? g.body : [[w.x, w.z]];
+  const xs = pts.map(q => q[0]), zs = pts.map(q => q[1]);
+  return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...zs) + Math.max(...zs)) / 2];
+}
+// Slide a wall back inside the room (clear of the fire lane where it can be) if it fits that way at all.
+function nudgeIntoRoom(w) {
+  const S = STUDIO, g = wallGeom(w), pts = g.body.concat(g.deck || []); if (!pts.length) return;
+  const xs = pts.map(q => q[0]), zs = pts.map(q => q[1]);
+  const fit = (lo, hi, a, b) => { for (const m of [S.fireLaneFt, 0.5]) { const L0 = a + m, L1 = b - m; if (hi - lo <= L1 - L0) return lo < L0 ? L0 - lo : hi > L1 ? L1 - hi : 0; } return 0; };
+  w.x = round2(w.x + fit(Math.min(...xs), Math.max(...xs), S.xMin, S.xMax));
+  w.z = round2(w.z + fit(Math.min(...zs), Math.max(...zs), S.zBack, S.zFront));
+}
+function centreItem(it) {
+  if (isWall(it)) { const g = wallGeom(it), xs = g.body.concat(g.deck || []).map(q => q[0]); if (!xs.length) return; it.x = round2(it.x - (Math.min(...xs) + Math.max(...xs)) / 2); }
+  else it.x = 0;
+}
+function viewCentre() {
+  const r = $("#planWrap").getBoundingClientRect();
+  if (document.body.dataset.view === "3d" || !r.width) return [0, 10];
+  const q = s2w(r.width / 2, r.height / 2); return [Math.round(q[0]), Math.round(q[1])];
+}
+function addItem(kind) {
+  const c = viewCentre(); let it;
+  if (kind === "ceil") it = { id: newId("c"), name: "Ceiling " + (L.ceilings.length + 1), panelsWide: 8, panelsLong: 6, heightFt: 18, tiltDeg: 0, x: c[0], z: c[1], rotationDeg: 0, visible: true };
+  else if (kind === "mobile") it = { id: newId("w"), name: "Mobile wall " + (L.walls.filter(w => w.deck && w.deck.on).length + 1), panelsHigh: 8, footingFt: 0, pin: "middle", x: c[0], z: c[1], rotationDeg: 0, segments: [{ panels: 10, curveDeg: 0 }], deck: { on: true, lengthFt: 16, depthFt: 4, heightFt: 2 }, visible: true };
+  else it = { id: newId("w"), name: "Wall " + (L.walls.length + 1), panelsHigh: 10, footingFt: 0, pin: "middle", x: c[0], z: c[1], rotationDeg: 0, segments: [{ panels: 20, curveDeg: 0 }], deck: { on: false, lengthFt: 16, depthFt: 4, heightFt: 2 }, visible: true };
+  (kind === "ceil" ? L.ceilings : L.walls).push(it);
+  selId = it.id; changed(); commit(); renderSide(); scrollCardIntoView();
+}
+function duplicate(id) {
+  const it = findItem(id); if (!it) return;
+  const cp = deepClone(it); cp.id = newId(isWall(it) ? "w" : "c"); cp.name = it.name + " copy";
+  const n = [-Math.sin(rad(it.rotationDeg || 0)), Math.cos(rad(it.rotationDeg || 0))];
+  cp.x = round2(it.x + n[0] * 6); cp.z = round2(it.z + n[1] * 6);
+  (isWall(it) ? L.walls : L.ceilings).push(cp);
+  selId = cp.id; changed(); commit(); renderSide(); scrollCardIntoView();
+}
+function removeItem(id) {
+  const it = findItem(id); if (!it) return;
+  const arr = isWall(it) ? L.walls : L.ceilings; arr.splice(arr.indexOf(it), 1);
+  if (selId === id) selId = null;
+  changed(); commit(); renderSide();
+  toast(it.name + " has been reaped.", { label: "Undo", fn: () => stepHistory(-1) });
+}
+function select(id) {
+  selId = id; planDirty = true; dirty3D = true; renderSide();
+  if (id) scrollCardIntoView();
+}
+function scrollCardIntoView() { const el = document.querySelector('.item.sel'); if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+function focusOn(id) {
+  const it = findItem(id); if (!it) return;
+  const r = $("#planWrap").getBoundingClientRect(); if (!r.width) return;
+  const s = w2s([it.x, it.z]);
+  if (s[0] < 40 || s[1] < 40 || s[0] > r.width - 40 || s[1] > r.height - 40) { view.ox += r.width / 2 - s[0]; view.oy += r.height / 2 - s[1]; view.userMoved = true; planDirty = true; }
+}
+
+// ======================================================================
+//  HISTORY, AUTOSAVE, LAYOUT LIBRARY, FILES
+// ======================================================================
+let hist = [], histAt = -1;
+let readoutsDirty = false;
+function changed() { planDirty = true; dirty3D = true; readoutsDirty = true; }
+function commit() {
+  const s = JSON.stringify(L);
+  if (hist[histAt] === s) return;
+  hist = hist.slice(0, histAt + 1); hist.push(s); if (hist.length > 150) hist.shift(); histAt = hist.length - 1;
+  store.set("grim.autosave", s); updateUndo(); readoutsDirty = true;
+}
+function stepHistory(d) {
+  const i = histAt + d; if (i < 0 || i >= hist.length) return;
+  histAt = i; L = JSON.parse(hist[i]); if (selId && !findItem(selId)) selId = null;
+  store.set("grim.autosave", hist[i]); changed(); renderSide(); updateUndo();
+}
+function updateUndo() { $("#undoBtn").disabled = histAt <= 0; $("#redoBtn").disabled = histAt >= hist.length - 1; }
+function validLayout(d) { return d && Array.isArray(d.walls) && Array.isArray(d.ceilings) && d.walls.every(w => Array.isArray(w.segments)); }
+function migrate(d) {
+  d.walls.forEach(w => {
+    w.pin = ["start", "middle", "end"].indexOf(w.pin) >= 0 ? w.pin : "middle";
+    w.deck = Object.assign({ on: false, lengthFt: 16, depthFt: 4, heightFt: 2 }, w.deck || {});
+    ["x", "z", "rotationDeg", "footingFt"].forEach(k => { w[k] = +w[k] || 0; }); w.panelsHigh = Math.max(1, Math.round(+w.panelsHigh || 1));
+    w.segments = w.segments.map(s => ({ panels: Math.max(1, Math.round(+s.panels || 1)), curveDeg: +s.curveDeg || 0 }));
+    if (!w.id) w.id = "w" + Math.random().toString(36).slice(2, 7);
+  });
+  d.ceilings.forEach(c => { ["x", "z", "rotationDeg", "tiltDeg", "heightFt"].forEach(k => { c[k] = +c[k] || 0; }); ["panelsWide", "panelsLong"].forEach(k => { c[k] = Math.max(1, Math.round(+c[k] || 1)); }); if (!c.id) c.id = "c" + Math.random().toString(36).slice(2, 7); });
+  d.name = d.name || "Untitled layout"; d.app = "grim-repositioner"; d.version = 1;
+  return d;
+}
+function loadLayout(d, msg) {
+  L = migrate(deepClone(d)); selId = null; changed(); commit(); renderSide(); if (msg) toast(msg);
+}
+function libRead() { try { return JSON.parse(store.get("grim.layouts", "{}")) || {}; } catch (e) { return {}; } }
+function libWrite(o) { store.set("grim.layouts", JSON.stringify(o)); }
+function renderLib() {
+  const lib = libRead(), names = Object.keys(lib).sort((a, b) => (lib[b].savedAt || 0) - (lib[a].savedAt || 0));
+  $("#libList").innerHTML = names.length ? names.map(n => '<li><span title="' + escapeHtml(n) + '">' + escapeHtml(n) + '</span><small>' + new Date(lib[n].savedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) + '</small>' +
+    '<button data-lib="load" data-n="' + escapeHtml(n) + '">Open</button><button class="danger" data-lib="del" data-n="' + escapeHtml(n) + '" aria-label="Delete ' + escapeHtml(n) + '">×</button></li>').join("")
+    : '<li class="empty" style="border:0">Nothing saved yet. Name the layout at the top, then save.</li>';
+}
+function wireFiles() {
+  $("#saveLayout").addEventListener("click", () => {
+    const lib = libRead(), n = (L.name || "Untitled layout").trim();
+    lib[n] = { savedAt: Date.now(), layout: deepClone(L) }; libWrite(lib); renderLib(); toast("Saved “" + n + "” in this browser");
+  });
+  $("#libList").addEventListener("click", e => {
+    const b = e.target.closest("[data-lib]"); if (!b) return;
+    const lib = libRead(), n = b.dataset.n; if (!lib[n]) return;
+    if (b.dataset.lib === "load") loadLayout(lib[n].layout, "Opened “" + n + "”");
+    else { const gone = lib[n]; delete lib[n]; libWrite(lib); renderLib(); toast("“" + n + "” has been reaped.", { label: "Undo", fn: () => { const l2 = libRead(); l2[n] = gone; libWrite(l2); renderLib(); } }); }
+  });
+  $("#exportBtn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(L, null, 2)], { type: "application/json" }), a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = (L.name || "layout").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").toLowerCase() + ".grim.json";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  $("#importBtn").addEventListener("click", () => $("#importFile").click());
+  $("#importFile").addEventListener("change", e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    f.text().then(t => { const d = JSON.parse(t); if (!validLayout(d)) throw new Error("bad"); loadLayout(d, "Imported “" + (d.name || f.name) + "”"); })
+      .catch(() => toast("That file isn't a Grim Repositioner layout."));
+  });
+  $("#newBtn").addEventListener("click", () => loadLayout(defaultLayout(), "Back to the stage as it stands. Undo if you didn't mean it."));
+  renderLib();
+}
+
+// ---- Print: plan on paper + the panel schedule ----------------------------------------------
+function printPlan() {
+  const W = 2400, H = 1500, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const v = fitView({}, W, H, 60);
+  drawPlan(cv.getContext("2d"), W, H, v, THEMES.paper, { print: true, k: 2, ghost: showGhost });
+  const t = totals(), om = computeOmens(), date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  let rows = "";
+  L.walls.filter(w => w.visible !== false).forEach(w => {
+    const sh = wallShape(w);
+    rows += '<tr><td><b>' + escapeHtml(w.name) + '</b>' + (w.deck.on ? " (on " + fmtLen(w.deck.lengthFt) + " × " + fmtLen(w.deck.depthFt) + " deck)" : "") + '</td><td>' +
+      w.segments.map(s => Math.round(s.panels) + " @ " + fmtDeg(s.curveDeg)).join(" + ") + '</td><td>' + sh.N + " × " + Math.round(w.panelsHigh) + '</td><td>' + panelsOfWall(w) + '</td><td>' + fmtLen(sh.arcLen) + " face · " + fmtLen(sh.chord) + " tip–tip · " + fmtLen(wallBase(w) + wallHeight(w)) + " top" + '</td></tr>';
+  });
+  L.ceilings.filter(c => c.visible !== false).forEach(c => {
+    const d = ceilDims(c);
+    rows += '<tr><td><b>' + escapeHtml(c.name) + '</b></td><td>ceiling' + (c.tiltDeg ? ", tilt " + fmtDeg(c.tiltDeg) : "") + '</td><td>' + Math.round(c.panelsWide) + " × " + Math.round(c.panelsLong) + '</td><td>' + panelsOfCeil(c) + '</td><td>' + fmtLen(d.W) + " × " + fmtLen(d.L) + " at " + fmtLen(c.heightFt) + '</td></tr>';
+  });
+  $("#print").innerHTML = '<header><h1>The Grim Repositioner</h1><div><b>' + escapeHtml(L.name || "") + '</b> · Lumostage · ' + date + ' · panels ' + panelFt().toFixed(3) + '′ (50 cm)</div></header>' +
+    '<img alt="Stage plan" src="' + cv.toDataURL("image/png") + '">' +
+    '<div class="sched"><table><thead><tr><th>Piece</th><th>Sections</th><th>Wide × high</th><th>Panels</th><th>Size</th></tr></thead><tbody>' + rows +
+    '<tr><td colspan="3"><b>Total</b></td><td><b>' + t.all + '</b></td><td>' + t.walls + ' wall + ' + t.ceilings + ' ceiling</td></tr></tbody></table>' +
+    '<div><b>Omens</b>' + (om.length ? '<ul>' + om.map(o => '<li class="warn">' + escapeHtml(o.text) + '</li>').join("") + '</ul>' : '<p>None. Everything fits the room.</p>') +
+    '<p style="color:#666;font-size:8pt">Plan: volume at top, north down. Dashed yellow = 3.5′ fire lane. Dashed violet = ceilings' + (showGhost ? "; faint dashes = the stage as it stands" : "") + '.</p></div></div>';
+  setTimeout(() => window.print(), 60);
+}
+
+// ======================================================================
+//  TOP BAR, KEYS, LOOP
+// ======================================================================
+function setView(v) {
+  document.body.dataset.view = v; store.set("grim.view", v);
+  document.querySelectorAll("#viewSeg button").forEach(b => b.classList.toggle("active", b.dataset.v === v));
+  if (v === "plan") activeView = "plan"; else if (v === "3d") activeView = "3d";
+  requestAnimationFrame(() => { resizePlan(); resize3D(); });
+}
+function setGhost(on) { showGhost = on; store.set("grim.ghost", on ? "1" : "0"); $("#ghostBtn").classList.toggle("on", on); planDirty = true; }
+function setMeasure(on) { measuring = on; if (!on) measure = null; $("#measureBtn").classList.toggle("on", on); $("#planWrap").classList.toggle("measuring", on); planDirty = true; }
+function setUnits(u) {
+  displayUnit = u; store.set("grim.units", u); $("#unitBtn").textContent = u === "m" ? "metres" : "ft·in";
+  const steps = u === "m" ? [[0.05, "5 cm"], [0.1, "10 cm"], [0.25, "25 cm"], [0.5, "50 cm"]].map(s => [s[0] * FT_PER_M, s[1]]) : [[1 / 12, "1″"], [0.25, "3″"], [0.5, "6″"], [1, "1′"]];
+  $("#snapSel").innerHTML = steps.map(s => '<option value="' + s[0] + '">Snap ' + s[1] + '</option>').join("");
+  const best = steps.reduce((a, s) => Math.abs(s[0] - snapFt) < Math.abs(a[0] - snapFt) ? s : a, steps[0]);
+  $("#snapSel").value = String(best[0]); snapFt = best[0];
+  renderSide(); planDirty = true;
+}
+function wireTop() {
+  document.querySelectorAll("#viewSeg button").forEach(b => b.addEventListener("click", () => setView(b.dataset.v)));
+  $("#ghostBtn").addEventListener("click", () => setGhost(!showGhost));
+  $("#measureBtn").addEventListener("click", () => setMeasure(!measuring));
+  $("#unitBtn").addEventListener("click", () => setUnits(displayUnit === "m" ? "ft" : "m"));
+  $("#snapSel").addEventListener("change", e => { snapFt = parseFloat(e.target.value); });
+  $("#undoBtn").addEventListener("click", () => stepHistory(-1));
+  $("#redoBtn").addEventListener("click", () => stepHistory(1));
+  $("#printBtn").addEventListener("click", printPlan);
+  $("#fitBtn").addEventListener("click", () => { view.userMoved = false; resizePlan(); });
+}
+const typing = el => el && (el.tagName === "INPUT" || el.tagName === "SELECT" || el.tagName === "TEXTAREA");
+document.addEventListener("keydown", e => {
+  if (typing(e.target)) { if (e.key === "Escape") e.target.blur(); return; }
+  const ctrl = e.ctrlKey || e.metaKey;
+  if (ctrl && e.key.toLowerCase() === "z") { e.preventDefault(); stepHistory(e.shiftKey ? 1 : -1); return; }
+  if (ctrl && e.key.toLowerCase() === "y") { e.preventDefault(); stepHistory(1); return; }
+  if (ctrl && e.key.toLowerCase() === "d") { e.preventDefault(); if (selId) duplicate(selId); return; }
+  if (ctrl || e.altKey) return;
+  const in3D = activeView === "3d" && document.body.dataset.view !== "plan";
+  if (in3D && /^(Key[WASDQE]|Arrow\w+|Shift\w+)$/.test(e.code)) { navKeys[e.code] = true; e.preventDefault(); return; }
+  if (e.key === "Escape") { if (measuring) setMeasure(false); else select(null); return; }
+  if (e.key === "1") return setView("plan");
+  if (e.key === "2") return setView("split");
+  if (e.key === "3") return setView("3d");
+  if (e.key.toLowerCase() === "g") return setGhost(!showGhost);
+  if (e.key.toLowerCase() === "m") return setMeasure(!measuring);
+  if (e.key.toLowerCase() === "f") { view.userMoved = false; resizePlan(); return; }
+  const it = selId && findItem(selId); if (!it) return;
+  if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); removeItem(it.id); return; }
+  if (e.key === "[" || e.key === "]") { it.rotationDeg = normDeg((it.rotationDeg || 0) + (e.key === "]" ? 1 : -1) * (e.shiftKey ? 1 : 15)); done(); return; }
+  const ar = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (ar) { e.preventDefault(); const st = e.shiftKey ? 1 / 12 : snapFt; it.x = round2(it.x + ar[0] * st); it.z = round2(it.z + ar[1] * st); done(); }
+});
+document.addEventListener("keyup", e => { delete navKeys[e.code]; });
+window.addEventListener("blur", () => { Object.keys(navKeys).forEach(k => delete navKeys[k]); });
+
+let lastT = 0;
+function loop(t) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.1, (t - lastT) / 1000 || 0); lastT = t;
+  if (readoutsDirty) { readoutsDirty = false; updateReadouts(); }
+  if (planDirty && document.body.dataset.view !== "3d") drawPlanNow();
+  if (renderer && document.body.dataset.view !== "plan") {
+    if (dirty3D) rebuild3D();
+    updateNav(dt);
+    renderer.render(scene, camera);
+  }
+}
+
+// ---- Start -------------------------------------------------------------
+(function start() {
+  try { const s = store.get("grim.autosave", null); if (s) { const d = JSON.parse(s); if (validLayout(d)) L = migrate(d); } } catch (e) {}
+  init3D();
+  wireSide(); wireFiles(); wireTop();
+  setUnits(displayUnit); setGhost(showGhost); setView(store.get("grim.view", "split"));
+  renderSide(); commit(); updateUndo();
+  new ResizeObserver(() => { resizePlan(); resize3D(); }).observe($("#views"));
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

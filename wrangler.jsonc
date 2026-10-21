@@ -1,0 +1,8 @@
+// Cloudflare Workers (static assets) config for The Grim Repositioner, if it ever gets deployed.
+// It's an internal tool: put it behind Cloudflare Access like Mock & Roll.
+{
+  "name": "grim-repositioner",
+  "compatibility_date": "2025-09-01",
+  "build": { "command": "sh scripts/build.sh" },
+  "assets": { "directory": "./dist", "not_found_handling": "404-page" }
+}
