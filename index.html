@@ -21,7 +21,7 @@
     --line2: #463e4e;
     --bone: #e9e2d0;
     --ash: #a39bab;
-    --dim: #756d7c;
+    --dim: #8c8493;
     --blood: #b3121f;
     --bloodHi: #d01a29;
     --ember: #ff3b3b;
@@ -80,75 +80,144 @@
   .seg.sm button { padding: 3px 9px; font-size: 12px; }
   .vr { width: 1px; height: 26px; background: var(--line); }
 
-  /* ---------- Side panel ---------- */
-  #side { position: absolute; top: var(--top); left: 0; bottom: 0; width: var(--side); overflow-y: auto; overflow-x: hidden;
-    background: var(--crypt); border-right: 1px solid var(--line); z-index: 10; padding-bottom: 40px; }
-  .group { padding: 14px 14px 6px; }
-  .group + .group { border-top: 1px solid var(--line); }
-  .ghead { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
-  .ghead h2 { margin: 0; flex: 1; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ash); }
-  .ghead button { padding: 3px 8px; font-size: 12px; }
-
-  .item { border: 1px solid var(--line); border-radius: var(--r); background: var(--crypt2); margin-bottom: 8px; overflow: hidden; }
-  .item > header { display: flex; align-items: center; gap: 8px; padding: 7px 8px 7px 10px; cursor: pointer; }
-  .item > header:hover { background: var(--crypt3); }
-  .item .dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; background: var(--spectre); }
-  .item .dot.ceil { background: transparent; border: 2px dashed var(--ceil); }
-  .item .dot.deck { box-shadow: 0 3px 0 -1px #8a7a62; }
-  .item .nm { flex: 1; font-weight: 600; background: transparent; border-color: transparent; padding: 3px 5px; }
-  .item:not(.sel) .nm { pointer-events: none; }
-  .item .sub { color: var(--ash); font-size: 12px; white-space: nowrap; }
-  .item .eye { padding: 3px 6px; background: transparent; border-color: transparent; color: var(--ash); }
-  .item .eye:hover { color: var(--bone); }
-  .item.hid > header { opacity: .5; }
-  .item.sel { border-color: var(--blood); box-shadow: 0 0 0 1px rgba(179, 18, 31, .35), 0 10px 30px -12px rgba(179, 18, 31, .5); }
-  .item.sel > header { background: linear-gradient(90deg, rgba(179, 18, 31, .22), transparent); }
-  .item .body { padding: 4px 10px 10px; border-top: 1px solid var(--line); }
-  .item h5 { margin: 12px 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ash); display: flex; gap: 8px; align-items: baseline; }
-  .item h5 small { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--dim); }
-  .fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 8px; }
-  .fields.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .fields label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--ash); }
-  .fields input { width: 100%; padding: 5px 7px; }
-  .chk { display: flex; align-items: center; gap: 8px; margin: 10px 0 6px; color: var(--bone); cursor: pointer; }
-  .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-  .btnrow button, .btnrow select { padding: 4px 9px; font-size: 12px; }
-  .btnrow .push { margin-left: auto; }
-
-  table.secs { width: 100%; border-collapse: collapse; }
-  table.secs th { font-size: 10px; font-weight: 600; color: var(--dim); text-align: left; padding: 0 4px 3px; text-transform: uppercase; letter-spacing: .06em; }
-  table.secs td { padding: 2px 4px; }
-  table.secs td:first-child { color: var(--dim); width: 18px; }
-  table.secs input { width: 100%; padding: 4px 6px; }
-  table.secs .arc { color: var(--ash); white-space: nowrap; width: 54px; text-align: right; }
-  table.secs button { padding: 2px 7px; background: transparent; border-color: transparent; color: var(--dim); }
-  table.secs button:hover { color: #ff8a8a; border-color: var(--line); }
-  table.secs tr.cur td { background: rgba(124, 240, 197, .06); }
-
-  .stats { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 10px 0 0; padding: 8px 10px; background: var(--void); border-radius: 6px; border: 1px solid var(--line); }
-  .stats dt { color: var(--ash); font-size: 12px; }
-  .stats dd { margin: 0; text-align: right; font-weight: 600; font-size: 12px; }
-
-  .totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .tot { background: var(--crypt2); border: 1px solid var(--line); border-radius: 7px; padding: 7px 9px; }
-  .tot b { display: block; font-size: 19px; font-weight: 700; line-height: 1.15; }
-  .tot span { font-size: 11px; color: var(--ash); }
-  .owned { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--ash); font-size: 12px; }
-  .owned input { width: 80px; }
+  /* ---------- Side panel: count + checks · piece list · inspector ---------- */
+  #side { position: absolute; top: var(--top); left: 0; bottom: 0; width: var(--side); display: flex; flex-direction: column;
+    background: var(--crypt); border-right: 1px solid var(--line); z-index: 10; }
+  .sideSec { padding: 14px 14px 12px; flex-shrink: 0; }
+  .sideSec + .sideSec { border-top: 1px solid var(--line); }
+  .secHead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .secHead h2 { margin: 0; flex: 1; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ash); }
+  .secHead button { padding: 3px 9px; font-size: 12px; }
+  .count { display: flex; align-items: baseline; gap: 7px; }
+  .count b { font-size: 30px; font-weight: 700; letter-spacing: -.02em; line-height: 1; }
+  .count .u { color: var(--ash); font-weight: 600; }
+  .count .split { margin-left: auto; color: var(--dim); font-size: 12px; }
+  .owned { display: flex; align-items: center; gap: 8px; margin-top: 10px; color: var(--ash); font-size: 12px; }
+  .owned input { width: 72px; padding: 4px 8px; }
   .owned .ok { color: var(--spectre); font-weight: 600; }
   .owned .short { color: var(--ember); font-weight: 700; }
-  .omens { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
-  .omens li { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border-radius: 6px; background: rgba(179, 18, 31, .12); border: 1px solid rgba(179, 18, 31, .35); font-size: 12px; cursor: pointer; }
-  .omens li.warn { background: rgba(216, 181, 74, .08); border-color: rgba(216, 181, 74, .3); }
-  .omens li i { font-style: normal; flex-shrink: 0; }
-  .omens li.clear { background: rgba(124, 240, 197, .06); border-color: rgba(124, 240, 197, .25); color: var(--ash); cursor: default; }
-  .empty { color: var(--dim); font-size: 12px; padding: 4px 2px 10px; font-style: italic; }
+  .checkHead { display: flex; align-items: baseline; gap: 10px; margin: 14px 0 6px; }
+  .checkHead h2 { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ash); }
+  #checkCount { display: flex; gap: 8px; font-size: 11px; font-weight: 600; }
+  .cBad { color: #ff7a7a; } .cWarn { color: var(--lane); }
+  .omens { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  #omens { max-height: 128px; overflow-y: auto; }
+  .omen { display: flex; gap: 8px; align-items: flex-start; width: 100%; text-align: left; padding: 6px 8px; border-radius: 6px; font-size: 12px; line-height: 1.35;
+    color: var(--bone); background: rgba(179, 18, 31, .12); border: 1px solid rgba(179, 18, 31, .35); }
+  .omen.warn { background: rgba(216, 181, 74, .07); border-color: rgba(216, 181, 74, .28); }
+  button.omen:hover { background: rgba(179, 18, 31, .22); border-color: rgba(179, 18, 31, .6); }
+  button.omen.warn:hover { background: rgba(216, 181, 74, .13); border-color: rgba(216, 181, 74, .5); }
+  .omen svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 1px; }
+  .omen.bad svg { color: #ff7a7a; } .omen.warn svg { color: var(--lane); }
+  .omen.clear { color: var(--ash); background: rgba(124, 240, 197, .05); border-color: rgba(124, 240, 197, .2); }
+  .omen.clear svg { color: var(--spectre); }
 
-  .lib { list-style: none; margin: 8px 0 0; padding: 0; }
-  .lib li { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-top: 1px solid var(--line); }
-  .lib li span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lib li small { color: var(--dim); }
-  .lib li button { padding: 2px 8px; font-size: 12px; }
+  #pieces { max-height: 36%; display: flex; flex-direction: column; min-height: 132px; }
+  #pieceList { overflow-y: auto; margin: 0 -6px; padding: 0 6px 2px; }
+  .grp { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); padding: 8px 4px 3px; }
+  .grp:first-child { padding-top: 0; }
+  .row { display: flex; align-items: center; gap: 9px; min-height: 34px; padding: 0 3px 0 10px; border-radius: 7px; cursor: pointer; border: 1px solid transparent; }
+  .row:hover { background: var(--crypt2); }
+  .row.sel { background: linear-gradient(90deg, rgba(179, 18, 31, .3), rgba(179, 18, 31, .06)); border-color: rgba(179, 18, 31, .55); }
+  .row:focus-visible { outline: none; box-shadow: var(--focus); }
+  .row.hid .rn, .row.hid .rs, .row.hid .glyph { opacity: .4; }
+  .rn { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rs { color: var(--ash); font-size: 12px; white-space: nowrap; }
+  .flag svg { width: 14px; height: 14px; display: block; }
+  .flag.bad { color: #ff7a7a; } .flag.warn { color: var(--lane); }
+  .glyph { width: 14px; height: 9px; flex-shrink: 0; box-sizing: border-box; }
+  .glyph.wall { border: 2.5px solid var(--spectre); border-bottom: 0; border-radius: 8px 8px 0 0; }
+  .glyph.mobile { border-top: 3px solid var(--spectre); border-bottom: 4px solid #7a6a54; height: 10px; }
+  .glyph.ceil { border: 1.5px dashed var(--ceil); border-radius: 2px; height: 11px; }
+  .eye { padding: 4px 6px; background: transparent; border-color: transparent; color: var(--dim); }
+  .eye:hover { color: var(--bone); background: var(--crypt3); }
+  .eye svg { width: 15px; height: 15px; display: block; }
+
+  #inspector { flex: 1; min-height: 0; overflow-y: auto; border-top: 1px solid var(--line); }
+  .insHead { position: sticky; top: 0; z-index: 2; padding: 12px 14px 10px; background: var(--crypt); border-bottom: 1px solid var(--line); }
+  .insName { width: calc(100% + 12px); margin-left: -7px; font-size: 16px; font-weight: 700; background: transparent; border-color: transparent; padding: 3px 6px; }
+  .insName:hover { border-color: var(--line); }
+  .insName:focus { background: var(--crypt3); }
+  .insSum { margin: 2px 0 0; color: var(--ash); font-size: 12px; }
+  .omens.mini { padding: 10px 14px 0; }
+  .omens.mini:empty { display: none; }
+  .blk { padding: 14px 14px 6px; }
+  .blk + .blk { border-top: 1px solid var(--line); }
+  .blk h3 { margin: 0 0 10px; font-size: 13px; font-weight: 700; color: var(--bone); }
+  .blkHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .blkHead h3 { margin: 0; }
+  select.mini { padding: 3px 8px; font-size: 12px; max-width: 60%; }
+  .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+  .fields.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .fld { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .fld.wide { grid-column: 1 / -1; }
+  .fld > span { font-size: 11px; color: var(--ash); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fld > input { width: 100%; padding: 6px 8px; }
+  .step { display: flex; align-items: stretch; min-width: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--crypt3); overflow: hidden; transition: border-color .15s; }
+  .step:hover { border-color: var(--line2); }
+  .step:focus-within { border-color: var(--spectre); }
+  .step input { flex: 1; width: 100%; min-width: 0; border: 0; border-radius: 0; background: transparent; text-align: center; padding: 6px 0; }
+  .step input:focus-visible { box-shadow: none; }
+  .stepBtn { flex-shrink: 0; border: 0; border-radius: 0; background: transparent; padding: 0 7px; color: var(--dim); }
+  .stepBtn:hover { background: #2e2836; color: var(--bone); }
+  .stepBtn:active { background: var(--blood); color: #fff; }
+  .stepBtn svg { width: 12px; height: 12px; display: block; }
+  .seg.full { display: flex; }
+  .seg.full button { flex: 1; padding: 5px 6px; white-space: nowrap; }
+  /* Inspector choices are state, not actions: a quiet raised chip instead of the blood fill. */
+  #inspector .seg button.active { background: var(--crypt3); color: var(--bone); box-shadow: inset 0 0 0 1px var(--line2), 0 1px 2px rgba(0, 0, 0, .4); }
+  table.secs { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  table.secs th { font-size: 11px; font-weight: 400; color: var(--ash); text-align: left; padding: 0 3px 4px; }
+  table.secs th:first-child, table.secs td.n { width: 16px; }
+  table.secs th:nth-child(4), table.secs td.arc { width: 46px; }
+  table.secs th:last-child, table.secs td.x { width: 26px; }
+  table.secs td { padding: 3px; }
+  table.secs td.n { color: var(--dim); font-size: 12px; text-align: center; padding-left: 0; }
+  table.secs .r { text-align: right; }
+  table.secs td.arc { color: var(--ash); font-size: 12px; }
+  .addSec { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 6px; padding: 5px 10px; font-size: 12px;
+    background: transparent; border-style: dashed; color: var(--ash); }
+  .addSec:hover { color: var(--bone); border-color: var(--line2); background: var(--crypt2); }
+  .addSec svg { width: 13px; height: 13px; }
+  .help { margin: 8px 0 8px; color: var(--dim); font-size: 12px; line-height: 1.45; }
+  .tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 4px 0 10px; }
+  .tools button { padding: 5px 4px; font-size: 12px; white-space: nowrap; }
+  .stats { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 10px; }
+  .stats dt { color: var(--ash); font-size: 12px; }
+  .stats dd { margin: 0; text-align: right; font-weight: 600; font-size: 12px; }
+  .insFoot { display: flex; justify-content: space-between; gap: 8px; padding: 12px 14px 18px; border-top: 1px solid var(--line); }
+  .iconBtn { padding: 4px; background: transparent; border-color: transparent; color: var(--dim); }
+  .iconBtn:hover { color: #ff8a8a; border-color: var(--line); background: transparent; }
+  .iconBtn svg { width: 14px; height: 14px; display: block; }
+  .insEmpty { padding: 36px 28px; text-align: center; color: var(--ash); }
+  .insEmpty img { opacity: .45; }
+  .insEmpty h3 { margin: 10px 0 4px; font-size: 14px; color: var(--bone); }
+  .insEmpty p { margin: 0 auto; max-width: 30ch; font-size: 12.5px; line-height: 1.5; }
+  .keys { list-style: none; padding: 0; margin: 18px auto 0; display: grid; gap: 7px; font-size: 12px; text-align: left; width: max-content; }
+  .keys li { display: flex; align-items: center; gap: 5px; }
+  .keys li kbd:last-of-type { margin-right: 5px; }
+  kbd { font: 600 11px/1 system-ui, "Segoe UI", sans-serif; padding: 3px 6px; border: 1px solid var(--line2); border-bottom-width: 2px; border-radius: 4px; background: var(--crypt3); color: var(--bone); }
+  .empty { color: var(--dim); font-size: 12px; padding: 2px 4px 6px; margin: 0; font-style: italic; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* ---------- File menu ---------- */
+  .menuWrap { position: relative; }
+  #fileBtn svg { width: 14px; height: 14px; margin-left: 2px; }
+  .menu { position: absolute; top: calc(100% + 8px); right: 0; width: 290px; padding: 6px; z-index: 40; background: var(--crypt2);
+    border: 1px solid var(--line2); border-radius: 10px; box-shadow: 0 10px 18px -8px rgba(0, 0, 0, .7); }
+  .menu[hidden] { display: none; }
+  .mi { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; text-align: left; padding: 7px 10px; background: transparent; border-color: transparent; }
+  .mi:hover, .mi:focus-visible { background: var(--crypt3); box-shadow: none; border-color: var(--line); }
+  .mi small { color: var(--dim); flex-shrink: 0; }
+  .mi em { color: var(--spectre); font-style: normal; font-size: 12px; }
+  .mi.danger { color: #ff8a8a; }
+  .mlabel { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); padding: 8px 10px 3px; }
+  .msep { height: 1px; background: var(--line); margin: 6px 4px; }
+  #libList { max-height: 220px; overflow-y: auto; }
+  .libRow { display: flex; align-items: center; gap: 2px; }
+  .libRow .mi { flex: 1; min-width: 0; }
+  .libRow .mi span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .libEmpty { margin: 0; padding: 4px 10px 8px; font-size: 12px; color: var(--dim); line-height: 1.45; }
 
   /* ---------- Views ---------- */
   #views { position: absolute; top: var(--top); left: var(--side); right: 0; bottom: 0; display: flex; }
@@ -162,12 +231,12 @@
   canvas { display: block; }
   .hint { position: absolute; left: 10px; right: 170px; bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--dim); font-size: 11px; pointer-events: none; text-shadow: 0 1px 2px #000; }
   .readout { position: absolute; right: 10px; bottom: 8px; color: var(--ash); font-size: 11px; pointer-events: none; }
-  .viewTag { position: absolute; left: 10px; top: 8px; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); pointer-events: none; }
+  .viewTag { position: absolute; left: 10px; top: 8px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); pointer-events: none; }
   .viewBtns { position: absolute; right: 10px; top: 8px; display: flex; gap: 6px; }
   .viewBtns button { padding: 3px 9px; font-size: 12px; background: rgba(19, 17, 22, .85); }
 
   #toast { position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; z-index: 50;
-    background: var(--crypt3); border: 1px solid var(--line2); border-radius: 8px; padding: 9px 14px; box-shadow: 0 12px 30px -8px #000;
+    background: var(--crypt3); border: 1px solid var(--line2); border-radius: 8px; padding: 9px 14px; box-shadow: 0 8px 16px -6px rgba(0, 0, 0, .8);
     transition: opacity .2s var(--ease), transform .3s var(--ease); display: flex; gap: 12px; align-items: center; }
   #toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
   #toast button { padding: 3px 10px; }
@@ -215,38 +284,38 @@
   <div class="vr"></div>
   <button id="undoBtn" class="ghostBtn" title="Undo (Ctrl+Z)" aria-label="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button>
   <button id="redoBtn" class="ghostBtn" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg></button>
+  <div class="menuWrap" id="fileWrap">
+    <button id="fileBtn" class="ghostBtn" aria-haspopup="true" aria-expanded="false" aria-controls="fileMenu">File<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div class="menu" id="fileMenu" role="menu" hidden>
+      <button type="button" class="mi" role="menuitem" data-file="save"><span id="saveLabel">Save</span><kbd>Ctrl S</kbd></button>
+      <div class="mlabel">Saved in this browser</div>
+      <div id="libList"></div>
+      <div class="msep"></div>
+      <button type="button" class="mi" role="menuitem" data-file="export">Export JSON…</button>
+      <button type="button" class="mi" role="menuitem" data-file="import">Import JSON…</button>
+      <div class="msep"></div>
+      <button type="button" class="mi danger" role="menuitem" data-file="new">Start over from today's stage</button>
+    </div>
+  </div>
   <button id="printBtn" class="primary" title="Print the plan and the panel schedule">Print plan</button>
 </div>
 
 <aside id="side">
-  <section class="group" id="sumGroup">
-    <div class="ghead"><h2>Panel count</h2></div>
-    <div class="totals" id="totals"></div>
-    <div class="owned"><label for="ownedIn">Panels owned</label><input id="ownedIn" inputmode="numeric" placeholder="—"><span id="ownedOut"></span></div>
+  <section class="sideSec" id="summary" aria-label="Panel count and checks">
+    <div class="count"><b class="num" id="totAll">0</b><span class="u">panels</span><span class="split num" id="totSplit"></span></div>
+    <div class="owned"><label for="ownedIn">You own</label><input id="ownedIn" inputmode="numeric" placeholder="—" autocomplete="off"><span id="ownedOut"></span></div>
+    <div class="checkHead"><h2>Checks</h2><span id="checkCount"></span></div>
     <ul class="omens" id="omens"></ul>
   </section>
-  <section class="group">
-    <div class="ghead"><h2>LED walls</h2>
-      <button id="addWall" title="A new LED wall standing on the floor">+ Wall</button>
-      <button id="addMobile" title="A new straight wall on a rolling deck">+ Mobile wall</button>
+  <section class="sideSec" id="pieces" aria-label="Pieces">
+    <div class="secHead"><h2>Pieces</h2>
+      <button id="addWall" title="Add an LED wall standing on the floor">+ Wall</button>
+      <button id="addMobile" title="Add a straight wall on a rolling deck">+ Mobile</button>
+      <button id="addCeil" title="Add an LED ceiling">+ Ceiling</button>
     </div>
-    <div id="wallList"></div>
+    <div id="pieceList" role="listbox" aria-label="Walls and ceilings"></div>
   </section>
-  <section class="group">
-    <div class="ghead"><h2>Ceilings</h2><button id="addCeil">+ Ceiling</button></div>
-    <div id="ceilList"></div>
-  </section>
-  <section class="group">
-    <div class="ghead"><h2>Layouts</h2></div>
-    <div class="btnrow" style="margin-top:0">
-      <button id="saveLayout" class="primary">Save in browser</button>
-      <button id="exportBtn">Export JSON</button>
-      <button id="importBtn">Import JSON</button>
-      <button id="newBtn" class="danger" title="Start over from the stage as it stands today">Start over</button>
-    </div>
-    <ul class="lib" id="libList"></ul>
-    <input type="file" id="importFile" accept=".json,application/json" hidden>
-  </section>
+  <section id="inspector" aria-label="Selected piece"></section>
 </aside>
 
 <main id="views">
@@ -264,6 +333,7 @@
   </div>
 </main>
 
+<input type="file" id="importFile" accept=".json,application/json" hidden>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="print"></div>
 
@@ -373,7 +443,12 @@ function fmtLen(ft) {
   return (neg ? "−" : "") + (f || !inch ? f + "′" + inch : inch.trim());
 }
 function fmtDeg(d) { return (Math.round(d * 10) / 10).toString().replace("-", "−") + "°"; }
-function lenInputVal(ft) { const v = displayUnit === "m" ? ft * M_PER_FT : ft; return String(Math.round(v * 100) / 100); }
+// What a length field shows: 19' 2.75" (to the quarter inch) or 5.861 (metres). parseLen reads both back.
+function lenInputVal(ft) {
+  if (displayUnit === "m") return String(Math.round(ft * M_PER_FT * 1000) / 1000);
+  const q = Math.round(Math.abs(ft) * 48) / 4, f = Math.floor(q / 12), i = Math.round((q - f * 12) * 100) / 100;
+  return (ft < 0 && q ? "-" : "") + f + "' " + i + '"';
+}
 // Accepts 18.5 (in the current unit), 18'6", 18′ 6″, 18' 6, 5.6m, 560cm.
 function parseLen(str) {
   const s = String(str).trim().replace(/[′’]/g, "'").replace(/[″”]/g, '"');
@@ -1038,110 +1113,153 @@ function resize3D() {
 }
 
 // ======================================================================
-//  SIDE PANEL
+//  SIDE PANEL: panel count + checks, the piece list, the inspector
 // ======================================================================
-const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
-const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.9M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/></svg>';
-function fld(id, f, t, val, lbl, extra) {
-  return '<label>' + lbl + '<input data-id="' + id + '" data-f="' + f + '" data-t="' + t + '" value="' + escapeHtml(val) + '" ' + (t === "int" || t === "deg" || t === "num" ? 'inputmode="decimal"' : 'spellcheck="false"') + (extra || "") + '></label>';
+// Three stable zones. The list keeps its height when you pick something; the picked piece is
+// edited in the inspector below it, in the order a wall gets built: shape, height, position,
+// then what it measures. Lengths read and type as feet-and-inches (or metres) everywhere.
+const SVG = (d, extra) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"' + (extra || "") + '>' + d + '</svg>';
+const ICON = {
+  eye: SVG('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
+  eyeOff: SVG('<path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.9M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/>'),
+  skull: SVG('<path d="M12 3a8 8 0 0 0-8 8c0 2.6 1.2 4.4 3 5.5V20h10v-3.5c1.8-1.1 3-2.9 3-5.5a8 8 0 0 0-8-8z"/><circle cx="9" cy="11.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="11.5" r="1.4" fill="currentColor" stroke="none"/><path d="M10.5 20v-2.5M13.5 20v-2.5"/>'),
+  warn: SVG('<path d="M12 3.5 2.5 20h19L12 3.5z"/><path d="M12 10v4.5"/><path d="M12 17.5h.01"/>'),
+  check: SVG('<path d="m5 12.5 4.5 4.5L19 7.5"/>'),
+  x: SVG('<path d="M6 6l12 12M18 6 6 18"/>'),
+  plus: SVG('<path d="M12 5v14M5 12h14"/>'),
+  minus: SVG('<path d="M5 12h14"/>'),
+  chev: SVG('<path d="m6 9 6 6 6-6"/>')
+};
+const STEPS = { panels: 1, panelsHigh: 1, panelsWide: 1, panelsLong: 1, curveDeg: 0.5, rotationDeg: 15, tiltDeg: 1 };
+const cap = s => s[0].toUpperCase() + s.slice(1);
+let omenCache = [];
+function setHTML(el, html) { if (el && el._html !== html) { el._html = html; el.innerHTML = html; } }
+function inp(id, f, t, val, label) {
+  return '<input data-id="' + id + '" data-f="' + f + '" data-t="' + t + '" value="' + escapeHtml(val) + '" aria-label="' + escapeHtml(label) + '" autocomplete="off" spellcheck="false"' + (t === "int" || t === "deg" ? ' inputmode="decimal"' : '') + '>';
 }
-function wallCard(w) {
-  const sel = w.id === selId, hid = w.visible === false, sh = wallShape(w);
-  let h = '<article class="item' + (sel ? " sel" : "") + (hid ? " hid" : "") + '" data-item="' + w.id + '"><header data-act="select">' +
-    '<i class="dot' + (w.deck && w.deck.on ? " deck" : "") + '"></i><input class="nm" data-id="' + w.id + '" data-f="name" data-t="text" value="' + escapeHtml(w.name) + '" aria-label="Name" spellcheck="false" tabindex="' + (sel ? 0 : -1) + '">' +
-    '<span class="sub num" data-o="' + w.id + ':sub">' + sh.N + ' × ' + Math.round(w.panelsHigh) + '</span>' +
-    '<button class="eye" data-act="vis" title="' + (hid ? "Show" : "Hide") + '" aria-label="' + (hid ? "Show" : "Hide") + '">' + (hid ? EYE_OFF : EYE) + '</button></header>';
-  if (sel) {
-    const deckOn = w.deck && w.deck.on;
-    h += '<div class="body"><h5>Size</h5><div class="fields">' + fld(w.id, "panelsHigh", "int", Math.round(w.panelsHigh), "Panels high") +
-      (deckOn ? '<label>Base<input value="on deck" disabled></label>' : fld(w.id, "footingFt", "len", lenInputVal(w.footingFt || 0), "Footing")) +
-      '<label>Panels wide<input data-o="' + w.id + ':wide" value="' + sh.N + '" disabled></label></div>' +
-      '<h5>Sections <small>curve = degrees between neighbouring panels</small></h5><table class="secs"><thead><tr><th>#</th><th>Panels</th><th>Curve °</th><th style="text-align:right">Arc</th><th></th></tr></thead><tbody>';
-    w.segments.forEach((sg, i) => {
-      h += '<tr><td>' + (i + 1) + '</td><td><input data-id="' + w.id + '" data-f="segments.' + i + '.panels" data-t="int" value="' + Math.round(sg.panels) + '" inputmode="numeric" aria-label="Section ' + (i + 1) + ' panels"></td>' +
-        '<td><input data-id="' + w.id + '" data-f="segments.' + i + '.curveDeg" data-t="deg" value="' + (+sg.curveDeg || 0) + '" inputmode="decimal" aria-label="Section ' + (i + 1) + ' curve in degrees per panel"></td>' +
-        '<td class="arc num" data-o="' + w.id + ':arc' + i + '">' + fmtDeg(Math.round(sg.panels) * (+sg.curveDeg || 0)) + '</td>' +
-        '<td>' + (w.segments.length > 1 ? '<button data-act="secDel" data-i="' + i + '" title="Remove section ' + (i + 1) + '" aria-label="Remove section ' + (i + 1) + '">×</button>' : '') + '</td></tr>';
-    });
-    h += '</tbody></table><div class="btnrow"><button data-act="secAdd">+ Section</button><button data-act="secSplit" title="Split the last section in two">Split last</button>' +
-      '<select data-act="preset" aria-label="Apply a preset shape"><option value="">Preset shape…</option>' + PRESETS.map((p, i) => '<option value="' + i + '">' + p.name + '</option>').join("") + '</select></div>' +
-      '<dl class="stats" data-o="' + w.id + ':stats">' + wallStatsHTML(w, sh) + '</dl>' +
-      '<h5>Placement <small>X / Z is the pinned point</small></h5>' +
-      '<div class="btnrow" style="margin:0 0 8px;align-items:center"><span style="color:var(--ash);font-size:12px">Pin</span><div class="seg sm" role="group" aria-label="Pinned point">' +
-      ["start", "middle", "end"].map(p => '<button data-act="pin" data-pin="' + p + '" class="' + (w.pin === p ? "active" : "") + '" title="Keep the ' + p + ' of the wall fixed while you edit sections">' + p[0].toUpperCase() + p.slice(1) + '</button>').join("") + '</div></div>' +
-      '<div class="fields">' + fld(w.id, "x", "len", lenInputVal(w.x), "X (east → west)") + fld(w.id, "z", "len", lenInputVal(w.z), "Z (south → north)") + fld(w.id, "rotationDeg", "deg", normDeg(w.rotationDeg || 0), "Turn °") + '</div>' +
-      '<label class="chk"><input type="checkbox" data-id="' + w.id + '" data-f="deck.on" data-t="bool"' + (deckOn ? " checked" : "") + '> Stands on a rolling deck</label>' +
-      (deckOn ? '<div class="fields">' + fld(w.id, "deck.lengthFt", "len", lenInputVal(w.deck.lengthFt), "Deck length") + fld(w.id, "deck.depthFt", "len", lenInputVal(w.deck.depthFt), "Deck depth") + fld(w.id, "deck.heightFt", "len", lenInputVal(w.deck.heightFt), "Deck height") + '</div>' : '') +
-      '<div class="btnrow"><button data-act="square" title="Turn the wall so its longest flat section runs square to the room">Square up</button>' +
-      '<button data-act="centre" title="Slide the wall east / west so it is centred on the volume axis (x = 0)">Centre</button>' +
-      '<button data-act="flip" title="Turn the LED face to the other side, same footprint">Flip face</button>' +
-      '<button data-act="mirror" title="Mirror the shape end for end (a left hockey stick becomes a right one)">Mirror</button></div>' +
-      '<div class="btnrow"><button data-act="dup">Duplicate</button><button class="danger push" data-act="del">Delete</button></div></div>';
-  }
-  return h + '</article>';
+function stepper(id, f, t, val, label) {
+  return '<div class="step"><button type="button" class="stepBtn" data-act="step" data-d="-1" tabindex="-1" aria-label="Decrease ' + escapeHtml(label) + '">' + ICON.minus + '</button>' + inp(id, f, t, val, label) +
+    '<button type="button" class="stepBtn" data-act="step" data-d="1" tabindex="-1" aria-label="Increase ' + escapeHtml(label) + '">' + ICON.plus + '</button></div>';
 }
+function field(label, control, wide) { return '<div class="fld' + (wide ? " wide" : "") + '"><span>' + label + '</span>' + control + '</div>'; }
+function segBtns(act, key, opts, cur, label) {
+  return '<div class="seg sm full" role="group" aria-label="' + label + '">' + opts.map(o => '<button type="button" data-act="' + act + '" data-' + key + '="' + o[0] + '" class="' + (cur === o[0] ? "active" : "") + '" aria-pressed="' + (cur === o[0]) + '">' + o[1] + '</button>').join("") + '</div>';
+}
+function omenItems(list, global) {
+  if (!list.length) return global ? '<li><div class="omen clear">' + ICON.check + '<span>Everything fits the room.</span></div></li>' : '';
+  return list.map(o => {
+    const body = (o.lvl === "bad" ? ICON.skull : ICON.warn) + '<span>' + escapeHtml(o.text) + '</span>';
+    return '<li>' + (global && o.id ? '<button type="button" class="omen ' + o.lvl + '" data-omen="' + o.id + '" title="Select it">' + body + '</button>' : '<div class="omen ' + o.lvl + '">' + body + '</div>') + '</li>';
+  }).join("");
+}
+
+// ---- Zone 1: panel count + checks ----
+function renderSummary() {
+  const t = totals(); omenCache = computeOmens();
+  $("#totAll").textContent = t.all;
+  $("#totSplit").textContent = t.walls + " wall · " + t.ceilings + " ceiling";
+  const owned = parseInt(store.get("grim.owned", ""), 10);
+  setHTML($("#ownedOut"), owned > 0 ? (t.all <= owned ? '<span class="ok">' + (owned - t.all) + ' spare</span>' : '<span class="short">' + (t.all - owned) + ' short</span>') : '');
+  const bad = omenCache.filter(o => o.lvl === "bad").length, warn = omenCache.length - bad;
+  setHTML($("#checkCount"), (bad ? '<span class="cBad">' + bad + ' clash' + (bad > 1 ? "es" : "") + '</span>' : '') + (warn ? '<span class="cWarn">' + warn + ' warning' + (warn > 1 ? "s" : "") + '</span>' : ''));
+  setHTML($("#omens"), omenItems(omenCache, true));
+}
+// ---- Zone 2: the piece list ----
+function pieceSub(it) { return isWall(it) ? wallShape(it).N + " × " + Math.round(it.panelsHigh) : Math.round(it.panelsWide) + " × " + Math.round(it.panelsLong); }
+function renderList() {
+  const row = (it, kind) => {
+    const om = omenCache.filter(o => o.id === it.id), bad = om.some(o => o.lvl === "bad"), sel = it.id === selId, hid = it.visible === false;
+    return '<div class="row' + (sel ? " sel" : "") + (hid ? " hid" : "") + '" role="option" aria-selected="' + sel + '" tabindex="' + (sel || (!selId && it === L.walls[0]) ? 0 : -1) + '" data-item="' + it.id + '">' +
+      '<i class="glyph ' + kind + '" aria-hidden="true"></i><span class="rn">' + escapeHtml(it.name) + '</span>' +
+      (om.length ? '<span class="flag ' + (bad ? "bad" : "warn") + '" title="' + om.length + (bad ? " clash" : " warning") + (om.length > 1 ? "s" : "") + '">' + (bad ? ICON.skull : ICON.warn) + '</span>' : '') +
+      '<span class="rs num">' + pieceSub(it) + '</span>' +
+      '<button type="button" class="eye" data-act="vis" tabindex="-1" title="' + (hid ? "Show" : "Hide") + '" aria-label="' + (hid ? "Show " : "Hide ") + escapeHtml(it.name) + '">' + (hid ? ICON.eyeOff : ICON.eye) + '</button></div>';
+  };
+  setHTML($("#pieceList"),
+    '<div class="grp" role="presentation">LED walls</div>' + (L.walls.length ? L.walls.map(w => row(w, w.deck && w.deck.on ? "mobile" : "wall")).join("") : '<p class="empty">No walls. Bleak, even by our standards.</p>') +
+    '<div class="grp" role="presentation">Ceilings</div>' + (L.ceilings.length ? L.ceilings.map(c => row(c, "ceil")).join("") : '<p class="empty">No ceilings. Open to the heavens.</p>'));
+}
+// ---- Zone 3: the inspector ----
+function wallSummary(w, sh) { return (sh.N * Math.round(w.panelsHigh)) + " panels · " + fmtLen(sh.arcLen) + " of face · " + (w.deck && w.deck.on ? "on a deck" : "floor-standing"); }
+function ceilSummary(c) { const d = ceilDims(c); return panelsOfCeil(c) + " panels · " + fmtLen(d.W) + " × " + fmtLen(d.L) + " · at " + fmtLen(c.heightFt); }
+function insHead(it, sum) {
+  return '<header class="insHead"><input class="insName" data-id="' + it.id + '" data-f="name" data-t="text" value="' + escapeHtml(it.name) + '" aria-label="Name" spellcheck="false" autocomplete="off">' +
+    '<p class="insSum num" data-o="' + it.id + ':sum">' + sum + '</p></header>' +
+    '<ul class="omens mini" data-o="' + it.id + ':omens">' + omenItems(omenCache.filter(o => o.id === it.id), false) + '</ul>';
+}
+function insFoot() { return '<footer class="insFoot"><button type="button" data-act="dup">Duplicate</button><button type="button" class="danger" data-act="del">Delete</button></footer>'; }
 function wallStatsHTML(w, sh) {
   const top = wallBase(w) + wallHeight(w);
-  return '<dt>Panels</dt><dd>' + (sh.N * Math.round(w.panelsHigh)) + '</dd>' +
+  return '<dt>Panels</dt><dd>' + (sh.N * Math.round(w.panelsHigh)) + ' (' + sh.N + ' × ' + Math.round(w.panelsHigh) + ')</dd>' +
     '<dt>Face length</dt><dd>' + fmtLen(sh.arcLen) + '</dd>' +
     '<dt>Tip to tip</dt><dd>' + fmtLen(sh.chord) + '</dd>' +
     '<dt>Depth</dt><dd>' + fmtLen(sh.depth) + '</dd>' +
     '<dt>Total curve</dt><dd>' + fmtDeg(sh.sweep) + '</dd>' +
-    '<dt>LED height</dt><dd>' + fmtLen(wallHeight(w)) + ' (top at ' + fmtLen(top) + ')</dd>';
-}
-function ceilCard(c) {
-  const sel = c.id === selId, hid = c.visible === false, d = ceilDims(c);
-  let h = '<article class="item' + (sel ? " sel" : "") + (hid ? " hid" : "") + '" data-item="' + c.id + '"><header data-act="select">' +
-    '<i class="dot ceil"></i><input class="nm" data-id="' + c.id + '" data-f="name" data-t="text" value="' + escapeHtml(c.name) + '" aria-label="Name" spellcheck="false" tabindex="' + (sel ? 0 : -1) + '">' +
-    '<span class="sub num" data-o="' + c.id + ':sub">' + Math.round(c.panelsWide) + ' × ' + Math.round(c.panelsLong) + ' · ' + fmtLen(c.heightFt) + '</span>' +
-    '<button class="eye" data-act="vis" title="' + (hid ? "Show" : "Hide") + '" aria-label="' + (hid ? "Show" : "Hide") + '">' + (hid ? EYE_OFF : EYE) + '</button></header>';
-  if (sel) {
-    const R = STUDIO.ceilingRig;
-    h += '<div class="body"><h5>Size</h5><div class="fields">' + fld(c.id, "panelsWide", "int", Math.round(c.panelsWide), "Panels wide") + fld(c.id, "panelsLong", "int", Math.round(c.panelsLong), "Panels long") +
-      fld(c.id, "heightFt", "len", lenInputVal(c.heightFt), "Height") + '</div>' +
-      '<dl class="stats" data-o="' + c.id + ':stats">' + ceilStatsHTML(c, d) + '</dl>' +
-      '<h5>Placement <small>X / Z is the centre · rig ' + fmtLen(R.minFt) + '–' + fmtLen(R.maxFt) + '</small></h5><div class="fields">' +
-      fld(c.id, "x", "len", lenInputVal(c.x), "X (east → west)") + fld(c.id, "z", "len", lenInputVal(c.z), "Z (south → north)") + fld(c.id, "rotationDeg", "deg", normDeg(c.rotationDeg || 0), "Turn °") + '</div>' +
-      '<div class="fields two" style="margin-top:6px">' + fld(c.id, "tiltDeg", "deg", c.tiltDeg || 0, "Tilt ° (+ lifts the north edge)") + '</div>' +
-      '<div class="btnrow"><button data-act="centre" title="Centre on the volume axis (x = 0)">Centre</button><button data-act="dup">Duplicate</button><button class="danger push" data-act="del">Delete</button></div></div>';
-  }
-  return h + '</article>';
+    '<dt>LED height</dt><dd>' + fmtLen(wallHeight(w)) + '</dd>' +
+    '<dt>Top of wall</dt><dd>' + fmtLen(top) + '</dd>';
 }
 function ceilStatsHTML(c, d) {
   return '<dt>Panels</dt><dd>' + panelsOfCeil(c) + '</dd><dt>Size</dt><dd>' + fmtLen(d.W) + ' × ' + fmtLen(d.L) + '</dd>' +
     '<dt>Clear to motors</dt><dd>' + fmtLen(Math.max(0, STUDIO.ceilingRig.motorFt - c.heightFt)) + '</dd>';
 }
+function wallInspector(w) {
+  const sh = wallShape(w), deckOn = !!(w.deck && w.deck.on), id = w.id;
+  const rows = w.segments.map((sg, i) => '<tr><td class="n">' + (i + 1) + '</td>' +
+    '<td>' + stepper(id, "segments." + i + ".panels", "int", Math.round(sg.panels), "Section " + (i + 1) + " panels") + '</td>' +
+    '<td>' + stepper(id, "segments." + i + ".curveDeg", "deg", +sg.curveDeg || 0, "Section " + (i + 1) + " curve in degrees per panel") + '</td>' +
+    '<td class="arc num r" data-o="' + id + ':arc' + i + '">' + fmtDeg(Math.round(sg.panels) * (+sg.curveDeg || 0)) + '</td>' +
+    '<td class="x">' + (w.segments.length > 1 ? '<button type="button" class="iconBtn" data-act="secDel" data-i="' + i + '" title="Remove section ' + (i + 1) + '" aria-label="Remove section ' + (i + 1) + '">' + ICON.x + '</button>' : '') + '</td></tr>').join("");
+  return insHead(w, wallSummary(w, sh)) +
+    '<section class="blk"><div class="blkHead"><h3>Shape</h3><select class="mini" data-act="preset" aria-label="Apply a preset shape"><option value="">Preset shape…</option>' +
+      PRESETS.map((p, i) => '<option value="' + i + '">' + p.name + '</option>').join("") + '</select></div>' +
+      '<table class="secs"><thead><tr><th scope="col"><span class="sr">Section</span></th><th scope="col">Panels</th><th scope="col">Curve / panel</th><th scope="col" class="r">Turns</th><th scope="col"><span class="sr">Remove</span></th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<button type="button" class="addSec" data-act="secAdd">' + ICON.plus + 'Add section</button>' +
+      '<p class="help">Curve is the angle between neighbouring panels: 36 panels at 5° make a half circle. Negative bends the other way.</p></section>' +
+    '<section class="blk"><h3>Height</h3><div class="fields">' +
+      field("Panels high", stepper(id, "panelsHigh", "int", Math.round(w.panelsHigh), "Panels high")) +
+      field("Stands on", segBtns("base", "v", [["floor", "Floor"], ["deck", "Deck"]], deckOn ? "deck" : "floor", "Stands on")) + '</div>' +
+      (deckOn ? '<div class="fields three">' + field("Deck length", inp(id, "deck.lengthFt", "len", lenInputVal(w.deck.lengthFt), "Deck length")) + field("Deck depth", inp(id, "deck.depthFt", "len", lenInputVal(w.deck.depthFt), "Deck depth")) + field("Deck height", inp(id, "deck.heightFt", "len", lenInputVal(w.deck.heightFt), "Deck height")) + '</div>'
+              : '<div class="fields">' + field("Footing", inp(id, "footingFt", "len", lenInputVal(w.footingFt || 0), "Footing height")) + '</div>') + '</section>' +
+    '<section class="blk"><h3>Position</h3><div class="fields three">' +
+      field("X · east–west", inp(id, "x", "len", lenInputVal(w.x), "X position")) + field("Z · south–north", inp(id, "z", "len", lenInputVal(w.z), "Z position")) +
+      field("Turn", stepper(id, "rotationDeg", "deg", normDeg(w.rotationDeg || 0), "Turn in degrees")) + '</div>' +
+      '<div class="fields">' + field("Hold fixed while sections change", segBtns("pin", "pin", [["start", "Start"], ["middle", "Middle"], ["end", "End"]], w.pin, "Hold fixed"), true) + '</div>' +
+      '<p class="help">X and Z place the held point, the diamond on the plan.</p>' +
+      '<div class="tools"><button type="button" data-act="square" title="Turn so the longest flat section runs square to the room">Square up</button><button type="button" data-act="centre" title="Slide east or west onto the volume axis (x = 0)">Centre</button>' +
+      '<button type="button" data-act="flip" title="Same footprint, LED face on the other side">Flip face</button><button type="button" data-act="mirror" title="Swap the ends: a left-hand hockey stick becomes right-hand">Mirror</button></div></section>' +
+    '<section class="blk"><h3>Measurements</h3><dl class="stats" data-o="' + id + ':stats">' + wallStatsHTML(w, sh) + '</dl></section>' + insFoot();
+}
+function ceilInspector(c) {
+  const id = c.id, R = STUDIO.ceilingRig;
+  return insHead(c, ceilSummary(c)) +
+    '<section class="blk"><h3>Size</h3><div class="fields">' + field("Panels wide", stepper(id, "panelsWide", "int", Math.round(c.panelsWide), "Panels wide")) + field("Panels long", stepper(id, "panelsLong", "int", Math.round(c.panelsLong), "Panels long")) + '</div></section>' +
+    '<section class="blk"><h3>Height</h3><div class="fields">' + field("Height of LED face", inp(id, "heightFt", "len", lenInputVal(c.heightFt), "Height")) + field("Tilt", stepper(id, "tiltDeg", "deg", c.tiltDeg || 0, "Tilt in degrees")) + '</div>' +
+      '<p class="help">The rig hangs from ' + fmtLen(R.minFt) + ' to ' + fmtLen(R.maxFt) + ', motors at ' + fmtLen(R.motorFt) + '. Positive tilt lifts the north edge.</p></section>' +
+    '<section class="blk"><h3>Position</h3><div class="fields three">' + field("X · east–west", inp(id, "x", "len", lenInputVal(c.x), "X position")) + field("Z · south–north", inp(id, "z", "len", lenInputVal(c.z), "Z position")) +
+      field("Turn", stepper(id, "rotationDeg", "deg", normDeg(c.rotationDeg || 0), "Turn in degrees")) + '</div>' +
+      '<p class="help">X and Z place the centre.</p><div class="tools"><button type="button" data-act="centre" title="Centre on the volume axis (x = 0)">Centre</button></div></section>' +
+    '<section class="blk"><h3>Measurements</h3><dl class="stats" data-o="' + id + ':stats">' + ceilStatsHTML(c, ceilDims(c)) + '</dl></section>' + insFoot();
+}
+function renderInspector() {
+  const it = selId && findItem(selId), el = $("#inspector");
+  el._html = null;
+  el.innerHTML = !it ? '<div class="insEmpty"><img src="brand/reaper.svg" alt="" width="40" height="40"><h3>Nothing selected</h3><p>Pick a wall or ceiling from the list, or click one on the plan, to edit it here.</p>' +
+      '<ul class="keys"><li><kbd>Drag</kbd>move it on the plan</li><li><kbd>[</kbd><kbd>]</kbd>turn 15°</li><li><kbd>Arrows</kbd>nudge</li><li><kbd>Shift</kbd>while dragging: no snap</li></ul></div>'
+    : isWall(it) ? wallInspector(it) : ceilInspector(it);
+}
 function renderSide() {
-  $("#wallList").innerHTML = L.walls.length ? L.walls.map(wallCard).join("") : '<p class="empty">No walls. Bleak, even by our standards.</p>';
-  $("#ceilList").innerHTML = L.ceilings.length ? L.ceilings.map(ceilCard).join("") : '<p class="empty">No ceilings. Open to the heavens.</p>';
-  renderSummary();
+  renderSummary(); renderList(); renderInspector();
   if (document.activeElement !== $("#layoutName")) $("#layoutName").value = L.name || "";
 }
-function renderSummary() {
-  const t = totals();
-  $("#totals").innerHTML = '<div class="tot"><b class="num">' + t.walls + '</b><span>wall panels</span></div><div class="tot"><b class="num">' + t.ceilings + '</b><span>ceiling panels</span></div><div class="tot"><b class="num">' + t.all + '</b><span>total</span></div>';
-  const owned = parseInt(store.get("grim.owned", ""), 10);
-  $("#ownedOut").innerHTML = owned > 0 ? (t.all <= owned ? '<span class="ok">' + (owned - t.all) + ' spare</span>' : '<span class="short">' + (t.all - owned) + ' short</span>') : '';
-  const om = computeOmens();
-  $("#omens").innerHTML = om.length ? om.map(o => '<li class="' + (o.lvl === "warn" ? "warn" : "") + '" data-id="' + (o.id || "") + '"><i>' + (o.lvl === "warn" ? "⚠" : "☠") + '</i><span>' + escapeHtml(o.text) + '</span></li>').join("")
-    : '<li class="clear"><i>✓</i><span>No omens. Everything fits the room.</span></li>';
-}
-// Live readouts without rebuilding the cards (keeps focus while typing / dragging).
+// Live readouts without rebuilding the inspector (keeps focus while typing, stepping or dragging).
 function updateReadouts() {
-  const it = selId && findItem(selId);
-  if (it) {
-    if (isWall(it)) {
-      const sh = wallShape(it);
-      const set = (k, html) => { const el = document.querySelector('[data-o="' + it.id + ':' + k + '"]'); if (el) { if (el.tagName === "INPUT") el.value = html; else el.innerHTML = html; } };
-      set("sub", sh.N + " × " + Math.round(it.panelsHigh)); set("wide", sh.N); set("stats", wallStatsHTML(it, sh));
-      it.segments.forEach((sg, i) => set("arc" + i, fmtDeg(Math.round(sg.panels) * (+sg.curveDeg || 0))));
-    } else {
-      const s = document.querySelector('[data-o="' + it.id + ':sub"]'); if (s) s.textContent = Math.round(it.panelsWide) + " × " + Math.round(it.panelsLong) + " · " + fmtLen(it.heightFt);
-      const st = document.querySelector('[data-o="' + it.id + ':stats"]'); if (st) st.innerHTML = ceilStatsHTML(it, ceilDims(it));
-    }
-    document.querySelectorAll('input[data-id="' + it.id + '"]').forEach(inp => { if (inp !== document.activeElement) inp.value = fieldDisplay(it, inp.dataset.f, inp.dataset.t); });
-  }
-  renderSummary();
+  renderSummary(); renderList();
+  const it = selId && findItem(selId); if (!it) return;
+  const set = (k, html) => setHTML(document.querySelector('#inspector [data-o="' + it.id + ':' + k + '"]'), html);
+  if (isWall(it)) { const sh = wallShape(it); set("sum", wallSummary(it, sh)); set("stats", wallStatsHTML(it, sh)); it.segments.forEach((sg, i) => set("arc" + i, fmtDeg(Math.round(sg.panels) * (+sg.curveDeg || 0)))); }
+  else { set("sum", ceilSummary(it)); set("stats", ceilStatsHTML(it, ceilDims(it))); }
+  set("omens", omenItems(omenCache.filter(o => o.id === it.id), false));
+  document.querySelectorAll('#inspector input[data-id="' + it.id + '"]').forEach(i => { if (i !== document.activeElement) i.value = fieldDisplay(it, i.dataset.f, i.dataset.t); });
 }
 function getPath(o, path) { return path.split(".").reduce((a, k) => a == null ? a : a[k], o); }
 function setPath(o, path, v) { const ks = path.split("."), last = ks.pop(); ks.reduce((a, k) => a[k], o)[last] = v; }
@@ -1153,75 +1271,101 @@ function fieldDisplay(it, f, t) {
   return v == null ? "" : String(v);
 }
 const LIMITS = { panelsHigh: [1, 60], panels: [1, 400], panelsWide: [1, 200], panelsLong: [1, 200], curveDeg: [-45, 45], tiltDeg: [-45, 45], heightFt: [0, 60] };
-function parseField(inp) {
-  const t = inp.dataset.t, f = inp.dataset.f, key = f.split(".").pop(), lim = LIMITS[key];
-  if (t === "bool") return inp.checked;
-  if (t === "text") return inp.value;
-  let v = t === "len" ? parseLen(inp.value) : parseFloat(inp.value);
-  if (!isFinite(v)) return undefined;
+function clampField(f, t, v) {
+  const key = f.split(".").pop(), lim = LIMITS[key];
   if (t === "int") v = Math.round(v);
   if (key === "lengthFt" || key === "depthFt") v = Math.max(0.5, v);
   if (key === "heightFt" && f.indexOf("deck") === 0) v = Math.max(0.1, v);
   if (lim) v = clamp(v, lim[0], lim[1]);
-  if (t === "deg" && key === "rotationDeg") v = normDeg(v);
-  return t === "len" ? round2(v) : v;
+  if (key === "rotationDeg") v = normDeg(v);
+  return t === "len" ? round2(v) : Math.round(v * 100) / 100;
+}
+function parseField(el) {
+  const t = el.dataset.t;
+  if (t === "text") return el.value;
+  const v = t === "len" ? parseLen(el.value) : parseFloat(el.value);
+  return isFinite(v) ? clampField(el.dataset.f, t, v) : undefined;
+}
+let commitTimer = null;
+function commitSoon() { clearTimeout(commitTimer); commitTimer = setTimeout(commit, 450); }
+// One step of a stepper / arrow key. Shift: ×10 for counts, 1° for turns, 1″ for lengths, finer for curves.
+function stepField(el, dir, shift) {
+  const it = findItem(el.dataset.id); if (!it) return;
+  const f = el.dataset.f, t = el.dataset.t, key = f.split(".").pop();
+  let step = STEPS[key] || (t === "len" ? snapFt : 1);
+  if (shift) step = t === "int" ? step * 10 : key === "rotationDeg" ? 1 : t === "len" ? 1 / 12 : 0.1;
+  setPath(it, f, clampField(f, t, (+getPath(it, f) || 0) + dir * step));
+  el.value = fieldDisplay(it, f, t);
+  changed(); commitSoon();
 }
 function wireSide() {
   const side = $("#side");
   side.addEventListener("input", e => {
-    const inp = e.target; if (!inp.dataset || !inp.dataset.f) return;
-    const it = findItem(inp.dataset.id); if (!it) return;
-    const v = parseField(inp); if (v === undefined) return;
-    if (inp.dataset.t === "bool") return;            // handled on change (rebuilds the card)
-    setPath(it, inp.dataset.f, v); changed(true);
+    const el = e.target; if (!el.dataset || !el.dataset.f) return;
+    const it = findItem(el.dataset.id), v = it && parseField(el); if (v === undefined || !it) return;
+    setPath(it, el.dataset.f, v); changed();
   });
   side.addEventListener("change", e => {
-    const inp = e.target; if (!inp.dataset || !inp.dataset.f) return;
-    const it = findItem(inp.dataset.id); if (!it) return;
-    const v = parseField(inp);
-    if (v !== undefined) setPath(it, inp.dataset.f, v);
-    if (inp.dataset.t === "bool") { changed(); commit(); renderSide(); return; }
-    inp.value = fieldDisplay(it, inp.dataset.f, inp.dataset.t);
+    const el = e.target;
+    if (el.matches('select[data-act="preset"]')) return applyPreset(el);
+    if (!el.dataset || !el.dataset.f) return;
+    const it = findItem(el.dataset.id); if (!it) return;
+    const v = parseField(el); if (v !== undefined) setPath(it, el.dataset.f, el.dataset.t === "text" ? (v.trim() || it.name) : v);
+    el.value = fieldDisplay(it, el.dataset.f, el.dataset.t);
     changed(); commit();
   });
-  side.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.tagName === "INPUT") e.target.blur(); });
+  side.addEventListener("keydown", e => {
+    const el = e.target;
+    if (el.tagName === "INPUT" && el.dataset.f) {
+      if (e.key === "Enter") { el.blur(); return; }
+      if ((e.key === "ArrowUp" || e.key === "ArrowDown") && el.dataset.t !== "text") { e.preventDefault(); stepField(el, e.key === "ArrowUp" ? 1 : -1, e.shiftKey); }
+      return;
+    }
+    const row = el.closest && el.closest(".row");
+    if (row && el === row) {
+      const rows = [].slice.call(document.querySelectorAll("#pieceList .row")), i = rows.indexOf(row);
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = rows[clamp(i + (e.key === "ArrowDown" ? 1 : -1), 0, rows.length - 1)]; if (n) n.focus(); }
+      else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(row.dataset.item); }
+    }
+  });
   side.addEventListener("click", e => {
-    const om = e.target.closest(".omens li[data-id]"); if (om && om.dataset.id) { select(om.dataset.id); focusOn(om.dataset.id); return; }
-    const a = e.target.closest("[data-act]"); if (!a || a.tagName === "SELECT") return;
-    const card = e.target.closest("[data-item]"), it = card && findItem(card.dataset.item); if (!it) return;
+    const om = e.target.closest("[data-omen]"); if (om) { select(om.dataset.omen); focusOn(om.dataset.omen); return; }
+    const a = e.target.closest("[data-act]"), row = e.target.closest(".row");
+    if (row && (!a || a.dataset.act !== "vis")) { if (row.dataset.item !== selId) select(row.dataset.item); return; }
+    if (!a || a.tagName === "SELECT") return;
+    const it = row ? findItem(row.dataset.item) : selId && findItem(selId); if (!it) return;
     const act = a.dataset.act;
-    if (act === "select") { if (e.target.closest("input,button") && e.target.closest("input,button") !== a) return; if (it.id !== selId) select(it.id); return; }
-    e.stopPropagation();
-    if (act === "vis") { it.visible = it.visible === false; changed(); commit(); renderSide(); return; }
+    if (act === "step") { const el = a.parentNode.querySelector("input"); stepField(el, +a.dataset.d, e.shiftKey); return; }
+    if (act === "vis") { it.visible = it.visible === false; changed(); commit(); renderList(); return; }
     if (act === "del") return removeItem(it.id);
     if (act === "dup") return duplicate(it.id);
     if (act === "centre") { centreItem(it); return done(); }
-    if (act === "secAdd") { it.segments.push({ panels: 10, curveDeg: 0 }); return done(true); }
+    if (act === "secAdd") { it.segments.push({ panels: 10, curveDeg: 0 }); done(true); const last = document.querySelector('#inspector input[data-f="segments.' + (it.segments.length - 1) + '.panels"]'); if (last) last.focus(); return; }
     if (act === "secDel") { it.segments.splice(+a.dataset.i, 1); return done(true); }
-    if (act === "secSplit") { const s = it.segments[it.segments.length - 1]; if (s.panels < 2) return; const h = Math.floor(s.panels / 2); s.panels -= h; it.segments.push({ panels: h, curveDeg: s.curveDeg }); return done(true); }
+    if (act === "base") { it.deck.on = a.dataset.v === "deck"; return done(true); }
     if (act === "pin") { repin(it, a.dataset.pin); return done(true); }
     if (act === "square") { squareUp(it); return done(); }
     if (act === "flip") { flipFace(it); return done(true); }
     if (act === "mirror") { mirrorWall(it); return done(true); }
   });
-  side.addEventListener("change", e => {
-    const s = e.target.closest('select[data-act="preset"]'); if (!s || s.value === "") return;
-    const it = findItem(s.closest("[data-item]").dataset.item), p = PRESETS[+s.value], c0 = bboxCentre(it);
-    it.segments = deepClone(p.segments);
-    if (p.segments.length > 1 || p.segments[0].curveDeg === 0) squareUp(it);
-    const c1 = bboxCentre(it); it.x = round2(it.x + c0[0] - c1[0]); it.z = round2(it.z + c0[1] - c1[1]);   // reshape in place
-    nudgeIntoRoom(it);
-    done(true); toast("Shaped as " + p.name);
-  });
   $("#ownedIn").value = store.get("grim.owned", "");
-  $("#ownedIn").addEventListener("input", e => { const v = parseInt(e.target.value, 10); if (v > 0) store.set("grim.owned", String(v)); else store.del("grim.owned"); renderSummary(); });
+  $("#ownedIn").addEventListener("input", e => { const v = parseInt(e.target.value, 10); if (v > 0) store.set("grim.owned", String(v)); else store.del("grim.owned"); renderSummary(); renderList(); });
   $("#layoutName").addEventListener("change", e => { L.name = e.target.value.trim() || "Untitled layout"; e.target.value = L.name; commit(); });
   $("#layoutName").addEventListener("keydown", e => { if (e.key === "Enter") e.target.blur(); });
   $("#addWall").addEventListener("click", () => addItem("wall"));
   $("#addMobile").addEventListener("click", () => addItem("mobile"));
   $("#addCeil").addEventListener("click", () => addItem("ceil"));
 }
-function done(rebuild) { changed(); commit(); if (rebuild) renderSide(); else updateReadouts(); }
+function applyPreset(sel) {
+  const it = selId && findItem(selId), p = PRESETS[+sel.value]; if (!it || !p || sel.value === "") return;
+  const c0 = bboxCentre(it);
+  it.segments = deepClone(p.segments);
+  if (p.segments.length > 1 || p.segments[0].curveDeg === 0) squareUp(it);
+  const c1 = bboxCentre(it); it.x = round2(it.x + c0[0] - c1[0]); it.z = round2(it.z + c0[1] - c1[1]);   // reshape in place
+  nudgeIntoRoom(it);
+  done(true); toast("Shaped as " + p.name);
+}
+function done(rebuild) { changed(); commit(); if (rebuild) { renderList(); renderInspector(); } else updateReadouts(); }
 
 // ---- Wall operations ---------------------------------------------------
 // Re-pin without moving anything: put the new pin where that point already is, heading the same way.
@@ -1302,10 +1446,12 @@ function removeItem(id) {
   toast(it.name + " has been reaped.", { label: "Undo", fn: () => stepHistory(-1) });
 }
 function select(id) {
+  const ae = document.activeElement, fromList = !!(ae && ae.closest && ae.closest("#pieceList"));
   selId = id; planDirty = true; dirty3D = true; renderSide();
   if (id) scrollCardIntoView();
+  if (fromList) { const r = document.querySelector("#pieceList .row.sel"); if (r) r.focus(); }   // keep keyboard focus in the list
 }
-function scrollCardIntoView() { const el = document.querySelector('.item.sel'); if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+function scrollCardIntoView() { const el = document.querySelector('#pieceList .row.sel'); if (el) el.scrollIntoView({ block: "nearest" }); }
 function focusOn(id) {
   const it = findItem(id); if (!it) return;
   const r = $("#planWrap").getBoundingClientRect(); if (!r.width) return;
@@ -1349,36 +1495,56 @@ function loadLayout(d, msg) {
 }
 function libRead() { try { return JSON.parse(store.get("grim.layouts", "{}")) || {}; } catch (e) { return {}; } }
 function libWrite(o) { store.set("grim.layouts", JSON.stringify(o)); }
-function renderLib() {
-  const lib = libRead(), names = Object.keys(lib).sort((a, b) => (lib[b].savedAt || 0) - (lib[a].savedAt || 0));
-  $("#libList").innerHTML = names.length ? names.map(n => '<li><span title="' + escapeHtml(n) + '">' + escapeHtml(n) + '</span><small>' + new Date(lib[n].savedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) + '</small>' +
-    '<button data-lib="load" data-n="' + escapeHtml(n) + '">Open</button><button class="danger" data-lib="del" data-n="' + escapeHtml(n) + '" aria-label="Delete ' + escapeHtml(n) + '">×</button></li>').join("")
-    : '<li class="empty" style="border:0">Nothing saved yet. Name the layout at the top, then save.</li>';
+// ---- File menu: save / open saved / export / import / start over ----
+function renderFileMenu() {
+  const lib = libRead(), names = Object.keys(lib).sort((a, b) => (lib[b].savedAt || 0) - (lib[a].savedAt || 0)), cur = (L.name || "").trim();
+  $("#saveLabel").textContent = "Save “" + (cur || "Untitled layout") + "”";
+  $("#libList").innerHTML = names.length ? names.map(n => '<div class="libRow"><button type="button" class="mi" role="menuitem" data-lib="load" data-n="' + escapeHtml(n) + '"><span>' + escapeHtml(n) + (n === cur ? ' <em>· open</em>' : '') + '</span><small>' +
+      new Date(lib[n].savedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) + '</small></button>' +
+      '<button type="button" class="iconBtn" data-lib="del" data-n="' + escapeHtml(n) + '" title="Delete “' + escapeHtml(n) + '”" aria-label="Delete ' + escapeHtml(n) + '">' + ICON.x + '</button></div>').join("")
+    : '<p class="libEmpty">Nothing saved yet. Name the layout in the top bar, then Save.</p>';
+}
+function saveLayout() {
+  const lib = libRead(), n = (L.name || "Untitled layout").trim(), existed = !!lib[n];
+  lib[n] = { savedAt: Date.now(), layout: deepClone(L) }; libWrite(lib); renderFileMenu();
+  toast((existed ? "Updated “" : "Saved “") + n + "” in this browser" + (existed ? "" : ". Rename it in the top bar to save another version."));
+}
+function openFileMenu(open) {
+  const m = $("#fileMenu"), b = $("#fileBtn");
+  if (open) { renderFileMenu(); m.hidden = false; b.setAttribute("aria-expanded", "true"); const f = m.querySelector(".mi"); if (f) f.focus(); }
+  else if (!m.hidden) { m.hidden = true; b.setAttribute("aria-expanded", "false"); }
 }
 function wireFiles() {
-  $("#saveLayout").addEventListener("click", () => {
-    const lib = libRead(), n = (L.name || "Untitled layout").trim();
-    lib[n] = { savedAt: Date.now(), layout: deepClone(L) }; libWrite(lib); renderLib(); toast("Saved “" + n + "” in this browser");
+  $("#fileBtn").addEventListener("click", () => openFileMenu($("#fileMenu").hidden));
+  document.addEventListener("pointerdown", e => { if (!e.target.closest("#fileWrap")) openFileMenu(false); });
+  $("#fileMenu").addEventListener("keydown", e => {
+    const items = [].slice.call($("#fileMenu").querySelectorAll(".mi")), i = items.indexOf(document.activeElement);
+    if (e.key === "Escape") { openFileMenu(false); $("#fileBtn").focus(); e.stopPropagation(); }
+    else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length]; if (n) n.focus(); }
   });
-  $("#libList").addEventListener("click", e => {
-    const b = e.target.closest("[data-lib]"); if (!b) return;
-    const lib = libRead(), n = b.dataset.n; if (!lib[n]) return;
-    if (b.dataset.lib === "load") loadLayout(lib[n].layout, "Opened “" + n + "”");
-    else { const gone = lib[n]; delete lib[n]; libWrite(lib); renderLib(); toast("“" + n + "” has been reaped.", { label: "Undo", fn: () => { const l2 = libRead(); l2[n] = gone; libWrite(l2); renderLib(); } }); }
+  $("#fileMenu").addEventListener("click", e => {
+    const lb = e.target.closest("[data-lib]");
+    if (lb) {
+      const lib = libRead(), n = lb.dataset.n; if (!lib[n]) return;
+      if (lb.dataset.lib === "load") { openFileMenu(false); loadLayout(lib[n].layout, "Opened “" + n + "”"); }
+      else { const gone = lib[n]; delete lib[n]; libWrite(lib); renderFileMenu(); toast("“" + n + "” has been reaped.", { label: "Undo", fn: () => { const l2 = libRead(); l2[n] = gone; libWrite(l2); renderFileMenu(); } }); }
+      return;
+    }
+    const f = e.target.closest("[data-file]"); if (!f) return;
+    openFileMenu(false);
+    if (f.dataset.file === "save") saveLayout();
+    else if (f.dataset.file === "export") {
+      const blob = new Blob([JSON.stringify(L, null, 2)], { type: "application/json" }), a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = (L.name || "layout").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").toLowerCase() + ".grim.json";
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    } else if (f.dataset.file === "import") $("#importFile").click();
+    else if (f.dataset.file === "new") loadLayout(defaultLayout(), "Back to the stage as it stands. Undo if you didn't mean it.");
   });
-  $("#exportBtn").addEventListener("click", () => {
-    const blob = new Blob([JSON.stringify(L, null, 2)], { type: "application/json" }), a = document.createElement("a");
-    a.href = URL.createObjectURL(blob); a.download = (L.name || "layout").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").toLowerCase() + ".grim.json";
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  });
-  $("#importBtn").addEventListener("click", () => $("#importFile").click());
   $("#importFile").addEventListener("change", e => {
     const f = e.target.files[0]; e.target.value = ""; if (!f) return;
     f.text().then(t => { const d = JSON.parse(t); if (!validLayout(d)) throw new Error("bad"); loadLayout(d, "Imported “" + (d.name || f.name) + "”"); })
       .catch(() => toast("That file isn't a Grim Repositioner layout."));
   });
-  $("#newBtn").addEventListener("click", () => loadLayout(defaultLayout(), "Back to the stage as it stands. Undo if you didn't mean it."));
-  renderLib();
 }
 
 // ---- Print: plan on paper + the panel schedule ----------------------------------------------
@@ -1438,6 +1604,7 @@ function wireTop() {
 }
 const typing = el => el && (el.tagName === "INPUT" || el.tagName === "SELECT" || el.tagName === "TEXTAREA");
 document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); saveLayout(); return; }
   if (typing(e.target)) { if (e.key === "Escape") e.target.blur(); return; }
   const ctrl = e.ctrlKey || e.metaKey;
   if (ctrl && e.key.toLowerCase() === "z") { e.preventDefault(); stepHistory(e.shiftKey ? 1 : -1); return; }

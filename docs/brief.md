@@ -40,8 +40,16 @@ the phone viewer and publishing.
 - **Plan:** drag to move (snaps to 1″ / 3″ / 6″ / 1′, or metric steps; Shift = free), drag the red handle
   to turn (15° steps, Shift = 1°), `[` `]` turn, arrows nudge, wheel zoom, drag empty floor to pan, Measure tool.
 - **Ghost:** the stage as it stands, dashed under the new layout.
-- **Side panel:** a card for each wall or ceiling, with sections table, presets, live stats (panels, face length,
-  tip to tip, depth, total curve, height), placement, deck. Square up / Centre / Flip face / Mirror / Duplicate / Delete.
+- **Side panel**, in three fixed zones:
+  - **Count and checks:** total panels, wall / ceiling split, panels owned, and the omens (click one to select the piece).
+  - **Pieces:** a list of walls and ceilings that doesn't move when you select something. Each row shows its size, a warning flag
+    and a show / hide toggle; arrow keys move through it.
+  - **Inspector:** the selected piece, laid out in build order: Shape (sections with steppers, presets, add section),
+    Height (panels high, floor or deck), Position (x / z / turn, hold-fixed point, Square up / Centre / Flip face / Mirror),
+    Measurements, then Duplicate / Delete.
+  - Steppers and ↑ / ↓ adjust numbers (Shift for bigger or finer steps). A run of quick changes undoes as one step.
+  - Lengths show and type as feet-and-inches (`19' 2.75"`) or metres.
+- **File menu:** Save (Ctrl+S, under the layout name), saved layouts, Export / Import JSON, and Start over.
 - **Panel count:** wall + ceiling + total, checked against "panels owned" (stored per browser).
 - **Omens** (advisory clash checks; nothing is blocked):
   - a wall through the studio wall, into a room, across the partition, into the column or its clearance
