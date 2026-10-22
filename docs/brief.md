@@ -11,6 +11,8 @@ this need, and does it fit the room?" before anyone touches a truss.
 - **The studio, unchanged.** It's the 2026-10 floor-plan revision: room 80′ E-W × 71′ N-S, 27′ walls, doors,
   the kitchen / washroom block and green room, the partition west of the volume, and the column (8″ post,
   18″ keep-out, 6″ clearance). The room is fixed and not editable. It lives in `STUDIO`, not in saved layouts.
+  The exception is the **partition** west of the volume. Its three straight runs are "building walls" saved in each
+  layout (`partitions`). They don't move, but each can be removed (shown dashed, ignored by the clash checks) and put back.
 - **The frame:** origin at the old curve's centre, +Z = north (the shooting floor), −X = east, 1 world unit = 1 ft.
   The plan keeps the volume at the top (north is down) as Mock & Roll did.
 - **The defaults** reproduce the stage as it stands: main wall 36 × 10 at 5° (half circle), two 10 × 8 rolling

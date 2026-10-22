@@ -129,6 +129,10 @@
   .glyph.wall { border: 2.5px solid var(--spectre); border-bottom: 0; border-radius: 8px 8px 0 0; }
   .glyph.mobile { border-top: 3px solid var(--spectre); border-bottom: 4px solid #7a6a54; height: 10px; }
   .glyph.ceil { border: 1.5px dashed var(--ceil); border-radius: 2px; height: 11px; }
+  .glyph.part { height: 4px; background: #8f8798; border-radius: 1px; }
+  .row.gone .glyph.part { background: transparent; border-top: 2px dashed var(--ghost); }
+  .row.gone .rn { color: var(--ash); text-decoration: line-through; text-decoration-color: var(--dim); }
+  .eyeGap { width: 29px; flex-shrink: 0; }
   .eye { padding: 4px 6px; background: transparent; border-color: transparent; color: var(--dim); }
   .eye:hover { color: var(--bone); background: var(--crypt3); }
   .eye svg { width: 15px; height: 15px; display: block; }
@@ -384,6 +388,11 @@ const STUDIO = {
 // (36 panels at 5° = a half circle). `pin` is the point that stays put while you edit sections
 // (start / middle / end of the run); x, z is where that point sits and rotationDeg the way the wall
 // runs there (0° = running west along +X with the LED face toward the shooting floor, +Z).
+// The partition west of the volume, one removable building wall per straight run.
+function defaultPartitions() {
+  const P = STUDIO.partition.path, names = ["Partition along the tip line", "Partition north–south", "Partition to the kitchen"];
+  return P.slice(0, -1).map((a, i) => ({ id: "p" + (i + 1), kind: "partition", name: names[i] || "Partition " + (i + 1), a: a.slice(), b: P[i + 1].slice(), heightFt: STUDIO.partition.heightFt, removed: false }));
+}
 function defaultLayout() {
   return {
     app: "grim-repositioner", version: 1, name: "Current stage",
@@ -399,6 +408,7 @@ function defaultLayout() {
         segments: [{ panels: 10, curveDeg: 0 }], deck: { on: true, lengthFt: 16, depthFt: 4, heightFt: 2 }, visible: true }
     ],
     // LED ceiling: 10 wide x 6 long at 20′, centred on the volume, near edge 16′ out from the deepest panel.
+    partitions: defaultPartitions(),
     ceilings: [{ id: "c1", name: "LED ceiling", panelsWide: 10, panelsLong: 6, heightFt: 20, tiltDeg: 0, x: 0, z: 1.75, rotationDeg: 0, visible: true }]
   };
 }
@@ -467,8 +477,10 @@ function toast(msg, action) {
   t.classList.add("show"); clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove("show"), action ? 6000 : 2200);
 }
-function findItem(id) { return L.walls.find(w => w.id === id) || L.ceilings.find(c => c.id === id) || null; }
+function findItem(id) { return L.walls.find(w => w.id === id) || L.ceilings.find(c => c.id === id) || (L.partitions || []).find(p => p.id === id) || null; }
 function isWall(it) { return !!it && Array.isArray(it.segments); }
+function isPart(it) { return !!it && it.kind === "partition"; }
+function partLen(p) { return Math.hypot(p.b[0] - p.a[0], p.b[1] - p.a[1]); }
 function newId(prefix) { let n = 1; while (findItem(prefix + n)) n++; return prefix + n; }
 
 // ---- 2D maths ---------------------------------------------------------
@@ -598,7 +610,7 @@ const DOORS = STUDIO.doors.map(d => {
   const inward = d.wall === "east" ? [1, 0] : d.wall === "west" ? [-1, 0] : d.wall === "north" ? [0, -1] : [0, 1];
   return Object.assign({}, d, { ends, inward });
 });
-function partitionSegs() { const p = STUDIO.partition.path, out = []; for (let i = 0; i + 1 < p.length; i++) out.push([p[i], p[i + 1]]); return out; }
+function partitionSegs() { return (L.partitions || []).filter(p => !p.removed).map(p => [p.a, p.b, p]); }
 function pillarKeepOut(withClearance) { const p = STUDIO.pillar, h = p.sizeFt / 2 + (withClearance ? p.clearanceFt : 0); return rectPoly(p.x - h, p.x + h, p.z - h, p.z + h); }
 function inLane(x, z) { return pointInPoly(x, z, STUDIO.laneOutline) && !pointInPoly(x, z, LANE_INNER); }
 
@@ -614,7 +626,7 @@ function computeOmens() {
     const g = G[w.id], polys = polysOf(w); if (!polys.length) return;
     if (polys.some(outside)) out.push({ lvl: "bad", id: w.id, text: w.name + " runs through the studio wall" });
     S.rooms.forEach(r => { const rp = rectPoly(r.x0, r.x1, r.z0, r.z1); if (polys.some(p => polysOverlap(p, rp))) out.push({ lvl: "bad", id: w.id, text: w.name + " cuts into the " + r.name.toLowerCase().replace(/ · wr · wr/, " / washrooms") }); });
-    if (polys.some(p => partitionSegs().some(sg => p.some((q, i) => segsCross(q, p[(i + 1) % p.length], sg[0], sg[1]))))) out.push({ lvl: "bad", id: w.id, text: w.name + " crosses the partition wall" });
+    partitionSegs().forEach(sg => { if (polys.some(p => p.some((q, i) => segsCross(q, p[(i + 1) % p.length], sg[0], sg[1])))) out.push({ lvl: "bad", id: w.id, text: w.name + " crosses the " + sg[2].name.toLowerCase() }); });
     if (polys.some(p => polysOverlap(p, pillarKeepOut(false)))) out.push({ lvl: "bad", id: w.id, text: w.name + " hits the column" });
     else if (polys.some(p => polysOverlap(p, pillarKeepOut(true)))) out.push({ lvl: "warn", id: w.id, text: w.name + " is inside the column's 6″ clearance" });
     if (g.top > S.wallHeightFt) out.push({ lvl: "bad", id: w.id, text: w.name + " is " + fmtLen(g.top) + " tall, taller than the room (" + fmtLen(S.wallHeightFt) + ")" });
@@ -711,7 +723,12 @@ function drawPlan(ctx, W, H, v, th, opts) {
   // Rooms, partition, column.
   S.rooms.forEach(r => { line(rectPoly(r.x0, r.x1, r.z0, r.z1), true); ctx.fillStyle = th.room; ctx.fill(); ctx.strokeStyle = th.roomLine; ctx.lineWidth = 1 * k; ctx.stroke();
     label(r.name, [(r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2], { color: th.roomText, box: false, size: 11 }); });
-  ctx.strokeStyle = th.wall; ctx.lineWidth = Math.max(2, 0.4 * v.sc); ctx.lineCap = "butt"; line(STUDIO.partition.path); ctx.stroke();
+  ctx.lineCap = "butt";
+  (L.partitions || []).forEach(pt => {                      // building walls: solid, or dashed where removed in this layout
+    ctx.strokeStyle = pt.removed ? th.ghost : th.wall; ctx.lineWidth = pt.removed ? 1.5 * k : Math.max(2, 0.4 * v.sc);
+    if (pt.removed) ctx.setLineDash([5 * k, 4 * k]);
+    line([pt.a, pt.b]); ctx.stroke(); ctx.setLineDash([]);
+  });
   { const p = S.pillar, h = p.sizeFt / 2, c = h + p.clearanceFt;
     line(rectPoly(p.x - h, p.x + h, p.z - h, p.z + h), true); ctx.fillStyle = th.pillar; ctx.fill();
     ctx.setLineDash([4 * k, 3 * k]); ctx.strokeStyle = th.lane; ctx.lineWidth = 1 * k; line(rectPoly(p.x - c, p.x + c, p.z - c, p.z + c), true); ctx.stroke(); ctx.setLineDash([]);
@@ -790,7 +807,12 @@ function drawPlan(ctx, W, H, v, th, opts) {
   });
   // Selection: outline, pin, rotate handle and dimensions.
   const sel = opts.sel && findItem(opts.sel);
-  if (sel && sel.visible !== false && !opts.print) {
+  if (isPart(sel) && !opts.print) {
+    ctx.strokeStyle = th.sel; ctx.lineWidth = Math.max(4, 0.5 * v.sc); if (sel.removed) ctx.setLineDash([6, 4]);
+    line([sel.a, sel.b]); ctx.stroke(); ctx.setLineDash([]);
+    const m = [(sel.a[0] + sel.b[0]) / 2, (sel.a[1] + sel.b[1]) / 2], horiz = Math.abs(sel.b[0] - sel.a[0]) > Math.abs(sel.b[1] - sel.a[1]);
+    label(sel.name + " · " + fmtLen(partLen(sel)) + (sel.removed ? " · removed" : ""), [m[0] + (horiz ? 0 : 1.5), m[1] + (horiz ? -1.6 : 0)], { size: 10, color: th.sel, align: horiz ? "center" : "left" });
+  } else if (sel && sel.visible !== false && !opts.print) {
     ctx.strokeStyle = th.sel; ctx.lineWidth = 2;
     if (isWall(sel)) {
       const g = geoms[sel.id];
@@ -841,6 +863,7 @@ function drawPlanNow() {
 // Rotate handle: in front of a wall's face at its pin, behind a ceiling's back edge.
 function handleDist(v) { return Math.max(5, 46 / (v || view).sc); }
 function handleOf(it) {
+  if (isPart(it)) return null;                                // building walls don't move
   const dist = handleDist();
   if (isWall(it)) { const n = [-Math.sin(rad(it.rotationDeg || 0)), Math.cos(rad(it.rotationDeg || 0))]; return [it.x + n[0] * dist, it.z + n[1] * dist]; }
   const cg = ceilGeom(it); return cg.W2([0, -cg.Lp / 2 - dist]);
@@ -848,7 +871,7 @@ function handleOf(it) {
 function hitTest(q) {
   const tol = 6 / view.sc;
   const sel = selId && findItem(selId);
-  if (sel && sel.visible !== false) { const h = handleOf(sel); if (Math.hypot(q[0] - h[0], q[1] - h[1]) < 10 / view.sc) return { id: sel.id, handle: true }; }
+  if (sel && sel.visible !== false) { const h = handleOf(sel); if (h && Math.hypot(q[0] - h[0], q[1] - h[1]) < 10 / view.sc) return { id: sel.id, handle: true }; }
   const walls = L.walls.filter(w => w.visible !== false);
   // The selected piece wins where pieces overlap, so you can always grab what you picked.
   const order = walls.slice().reverse().sort((a, b) => (b.id === selId) - (a.id === selId));
@@ -857,6 +880,7 @@ function hitTest(q) {
     if (g.N && (pointInPoly(q[0], q[1], g.body) || g.wpts.some((p, i) => i < g.N && distToSeg(q[0], q[1], p, g.wpts[i + 1]) < tol))) return { id: w.id };
     if (g.deck && pointInPoly(q[0], q[1], g.deck)) return { id: w.id };
   }
+  for (const pt of L.partitions || []) if (distToSeg(q[0], q[1], pt.a, pt.b) < Math.max(0.6, 7 / view.sc)) return { id: pt.id };
   const ceils = L.ceilings.filter(c => c.visible !== false).slice().reverse();
   for (const c of ceils) if (pointInPoly(q[0], q[1], ceilGeom(c).poly)) return { id: c.id };
   return null;
@@ -876,7 +900,8 @@ planCv.addEventListener("pointerdown", e => {
   if (hit) {
     if (hit.id !== selId) select(hit.id);
     const it = findItem(hit.id);
-    if (hit.handle) drag = { kind: "turn", id: it.id, start: it.rotationDeg || 0, moved: false };
+    if (isPart(it)) drag = { kind: "none" };
+    else if (hit.handle) drag = { kind: "turn", id: it.id, start: it.rotationDeg || 0, moved: false };
     else drag = { kind: "move", id: it.id, q0: q, x0: it.x, z0: it.z, moved: false };
   } else {
     drag = { kind: "pan", sx: sp[0], sy: sp[1], ox: view.ox, oy: view.oy, click: true };
@@ -886,7 +911,7 @@ planCv.addEventListener("pointerdown", e => {
 planCv.addEventListener("pointermove", e => {
   const sp = planPointer(e), q = s2w(sp[0], sp[1]);
   $("#planReadout").textContent = "x " + fmtLen(q[0]) + " · z " + fmtLen(q[1]);
-  if (!drag) { const h = !measuring && hitTest(q); planCv.style.cursor = measuring ? "" : h ? (h.handle ? "grab" : "move") : ""; return; }
+  if (!drag) { const h = !measuring && hitTest(q); planCv.style.cursor = measuring ? "" : h ? (h.handle ? "grab" : isPart(findItem(h.id)) ? "pointer" : "move") : ""; return; }
   if (drag.kind === "pan") { view.ox = drag.ox + sp[0] - drag.sx; view.oy = drag.oy + sp[1] - drag.sy; view.userMoved = true; planDirty = true; return; }
   if (drag.kind === "measure") { measure.b = e.shiftKey ? q : [Math.round(q[0] * 12) / 12, Math.round(q[1] * 12) / 12]; planDirty = true; return; }
   const it = findItem(drag.id); if (!it) return;
@@ -972,7 +997,6 @@ function buildStudio3D() {
     const roof = new THREE.Mesh(new THREE.PlaneGeometry(r.x1 - r.x0, r.z1 - r.z0), new THREE.MeshStandardMaterial({ color: 0x1e1b22 }));
     roof.rotation.x = -Math.PI / 2; roof.position.set((r.x0 + r.x1) / 2, r.heightFt, (r.z0 + r.z1) / 2); g.add(roof);
   });
-  partitionSegs().forEach(([a0, a1]) => { const dx = a1[0] - a0[0], dz = a1[1] - a0[1]; const n = Math.abs(dx) > Math.abs(dz) ? [0, 1] : [1, 0]; panel(a0[0], a0[1], a1[0], a1[1], S.partition.heightFt, n[0], n[1], roomMat); });
   const p = S.pillar;
   const post = new THREE.Mesh(new THREE.BoxGeometry(p.coreSizeFt, H, p.coreSizeFt), new THREE.MeshStandardMaterial({ color: 0x55505c, roughness: 0.9 }));
   post.position.set(p.x, H / 2, p.coreZ); g.add(post);
@@ -992,7 +1016,9 @@ const M3 = typeof THREE === "undefined" ? {} : {
   frame: new THREE.MeshStandardMaterial({ color: 0x8a8394, roughness: 0.6, metalness: 0.3 }),
   grid: new THREE.LineBasicMaterial({ color: 0x2f7a62, transparent: true, opacity: 0.65 }),
   gridSel: new THREE.LineBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.8 }),
-  rig: new THREE.LineBasicMaterial({ color: 0x4a4452 })
+  rig: new THREE.LineBasicMaterial({ color: 0x4a4452 }),
+  part: new THREE.MeshStandardMaterial({ color: 0x2a2630, roughness: 0.9 }),
+  partSel: new THREE.MeshStandardMaterial({ color: 0x3a1418, emissive: 0x2a0a0d, roughness: 0.9 })
 };
 function disposeTree(o) { o.traverse(n => { if (n.geometry) n.geometry.dispose(); }); }
 function rebuild3D() {
@@ -1000,6 +1026,13 @@ function rebuild3D() {
   while (itemsGroup.children.length) { const c = itemsGroup.children.pop(); disposeTree(c); }
   L.walls.forEach(w => { if (w.visible !== false) itemsGroup.add(wall3D(w, w.id === selId)); });
   L.ceilings.forEach(c => { if (c.visible !== false) itemsGroup.add(ceil3D(c, c.id === selId)); });
+  (L.partitions || []).forEach(p => { if (!p.removed) itemsGroup.add(part3D(p, p.id === selId)); });
+}
+function part3D(p, sel) {
+  const len = partLen(p), m = new THREE.Mesh(new THREE.BoxGeometry(len, p.heightFt, 0.4), sel ? M3.partSel : M3.part);
+  m.position.set((p.a[0] + p.b[0]) / 2, p.heightFt / 2, (p.a[1] + p.b[1]) / 2);
+  m.rotation.y = -Math.atan2(p.b[1] - p.a[1], p.b[0] - p.a[0]);
+  m.userData.itemId = p.id; return m;
 }
 function wall3D(w, sel) {
   const sh = wallShape(w), y0 = wallBase(w), H = wallHeight(w), g = new THREE.Group();
@@ -1165,19 +1198,20 @@ function renderSummary() {
   setHTML($("#omens"), omenItems(omenCache, true));
 }
 // ---- Zone 2: the piece list ----
-function pieceSub(it) { return isWall(it) ? wallShape(it).N + " × " + Math.round(it.panelsHigh) : Math.round(it.panelsWide) + " × " + Math.round(it.panelsLong); }
+function pieceSub(it) { return isPart(it) ? (it.removed ? "removed" : fmtLen(partLen(it))) : isWall(it) ? wallShape(it).N + " × " + Math.round(it.panelsHigh) : Math.round(it.panelsWide) + " × " + Math.round(it.panelsLong); }
 function renderList() {
   const row = (it, kind) => {
     const om = omenCache.filter(o => o.id === it.id), bad = om.some(o => o.lvl === "bad"), sel = it.id === selId, hid = it.visible === false;
-    return '<div class="row' + (sel ? " sel" : "") + (hid ? " hid" : "") + '" role="option" aria-selected="' + sel + '" tabindex="' + (sel || (!selId && it === L.walls[0]) ? 0 : -1) + '" data-item="' + it.id + '">' +
+    return '<div class="row' + (sel ? " sel" : "") + (hid ? " hid" : "") + (it.removed ? " gone" : "") + '" role="option" aria-selected="' + sel + '" tabindex="' + (sel || (!selId && it === L.walls[0]) ? 0 : -1) + '" data-item="' + it.id + '">' +
       '<i class="glyph ' + kind + '" aria-hidden="true"></i><span class="rn">' + escapeHtml(it.name) + '</span>' +
       (om.length ? '<span class="flag ' + (bad ? "bad" : "warn") + '" title="' + om.length + (bad ? " clash" : " warning") + (om.length > 1 ? "s" : "") + '">' + (bad ? ICON.skull : ICON.warn) + '</span>' : '') +
       '<span class="rs num">' + pieceSub(it) + '</span>' +
-      '<button type="button" class="eye" data-act="vis" tabindex="-1" title="' + (hid ? "Show" : "Hide") + '" aria-label="' + (hid ? "Show " : "Hide ") + escapeHtml(it.name) + '">' + (hid ? ICON.eyeOff : ICON.eye) + '</button></div>';
+      (kind === "part" ? '<span class="eyeGap"></span>' : '<button type="button" class="eye" data-act="vis" tabindex="-1" title="' + (hid ? "Show" : "Hide") + '" aria-label="' + (hid ? "Show " : "Hide ") + escapeHtml(it.name) + '">' + (hid ? ICON.eyeOff : ICON.eye) + '</button>') + '</div>';
   };
   setHTML($("#pieceList"),
     '<div class="grp" role="presentation">LED walls</div>' + (L.walls.length ? L.walls.map(w => row(w, w.deck && w.deck.on ? "mobile" : "wall")).join("") : '<p class="empty">No walls. Bleak, even by our standards.</p>') +
-    '<div class="grp" role="presentation">Ceilings</div>' + (L.ceilings.length ? L.ceilings.map(c => row(c, "ceil")).join("") : '<p class="empty">No ceilings. Open to the heavens.</p>'));
+    '<div class="grp" role="presentation">Ceilings</div>' + (L.ceilings.length ? L.ceilings.map(c => row(c, "ceil")).join("") : '<p class="empty">No ceilings. Open to the heavens.</p>') +
+    ((L.partitions || []).length ? '<div class="grp" role="presentation">Building walls</div>' + L.partitions.map(p => row(p, "part")).join("") : ''));
 }
 // ---- Zone 3: the inspector ----
 function wallSummary(w, sh) { return (sh.N * Math.round(w.panelsHigh)) + " panels · " + fmtLen(sh.arcLen) + " of face · " + (w.deck && w.deck.on ? "on a deck" : "floor-standing"); }
@@ -1240,12 +1274,21 @@ function ceilInspector(c) {
       '<p class="help">X and Z place the centre.</p><div class="tools"><button type="button" data-act="centre" title="Centre on the volume axis (x = 0)">Centre</button></div></section>' +
     '<section class="blk"><h3>Measurements</h3><dl class="stats" data-o="' + id + ':stats">' + ceilStatsHTML(c, ceilDims(c)) + '</dl></section>' + insFoot();
 }
+function partSummary(p) { return (p.removed ? "Removed from this layout · " : "") + fmtLen(partLen(p)) + " long · " + fmtLen(p.heightFt) + " tall"; }
+function partInspector(p) {
+  return insHead(p, partSummary(p)) +
+    '<section class="blk"><h3>Building wall</h3><p class="help">' + (p.removed
+      ? "Removed from this layout. The plan shows where it stood, dashed, and the clash checks ignore it."
+      : "Part of the studio, so it doesn&rsquo;t move. Remove it to try layouts without it; it stays in this list so you can put it back.") + '</p>' +
+    '<dl class="stats"><dt>Length</dt><dd>' + fmtLen(partLen(p)) + '</dd><dt>Height</dt><dd>' + fmtLen(p.heightFt) + '</dd></dl></section>' +
+    '<footer class="insFoot"><span></span>' + (p.removed ? '<button type="button" class="primary" data-act="restore">Put it back</button>' : '<button type="button" class="danger" data-act="del">Remove wall</button>') + '</footer>';
+}
 function renderInspector() {
   const it = selId && findItem(selId), el = $("#inspector");
   el._html = null;
   el.innerHTML = !it ? '<div class="insEmpty"><img src="brand/reaper.svg" alt="" width="40" height="40"><h3>Nothing selected</h3><p>Pick a wall or ceiling from the list, or click one on the plan, to edit it here.</p>' +
       '<ul class="keys"><li><kbd>Drag</kbd>move it on the plan</li><li><kbd>[</kbd><kbd>]</kbd>turn 15°</li><li><kbd>Arrows</kbd>nudge</li><li><kbd>Shift</kbd>while dragging: no snap</li></ul></div>'
-    : isWall(it) ? wallInspector(it) : ceilInspector(it);
+    : isPart(it) ? partInspector(it) : isWall(it) ? wallInspector(it) : ceilInspector(it);
 }
 function renderSide() {
   renderSummary(); renderList(); renderInspector();
@@ -1256,7 +1299,8 @@ function updateReadouts() {
   renderSummary(); renderList();
   const it = selId && findItem(selId); if (!it) return;
   const set = (k, html) => setHTML(document.querySelector('#inspector [data-o="' + it.id + ':' + k + '"]'), html);
-  if (isWall(it)) { const sh = wallShape(it); set("sum", wallSummary(it, sh)); set("stats", wallStatsHTML(it, sh)); it.segments.forEach((sg, i) => set("arc" + i, fmtDeg(Math.round(sg.panels) * (+sg.curveDeg || 0)))); }
+  if (isPart(it)) set("sum", partSummary(it));
+  else if (isWall(it)) { const sh = wallShape(it); set("sum", wallSummary(it, sh)); set("stats", wallStatsHTML(it, sh)); it.segments.forEach((sg, i) => set("arc" + i, fmtDeg(Math.round(sg.panels) * (+sg.curveDeg || 0)))); }
   else { set("sum", ceilSummary(it)); set("stats", ceilStatsHTML(it, ceilDims(it))); }
   set("omens", omenItems(omenCache.filter(o => o.id === it.id), false));
   document.querySelectorAll('#inspector input[data-id="' + it.id + '"]').forEach(i => { if (i !== document.activeElement) i.value = fieldDisplay(it, i.dataset.f, i.dataset.t); });
@@ -1338,6 +1382,7 @@ function wireSide() {
     if (act === "step") { const el = a.parentNode.querySelector("input"); stepField(el, +a.dataset.d, e.shiftKey); return; }
     if (act === "vis") { it.visible = it.visible === false; changed(); commit(); renderList(); return; }
     if (act === "del") return removeItem(it.id);
+    if (act === "restore") { it.removed = false; done(true); toast(it.name + " is back."); return; }
     if (act === "dup") return duplicate(it.id);
     if (act === "centre") { centreItem(it); return done(); }
     if (act === "secAdd") { it.segments.push({ panels: 10, curveDeg: 0 }); done(true); const last = document.querySelector('#inspector input[data-f="segments.' + (it.segments.length - 1) + '.panels"]'); if (last) last.focus(); return; }
@@ -1431,7 +1476,7 @@ function addItem(kind) {
   selId = it.id; changed(); commit(); renderSide(); scrollCardIntoView();
 }
 function duplicate(id) {
-  const it = findItem(id); if (!it) return;
+  const it = findItem(id); if (!it || isPart(it)) return;
   const cp = deepClone(it); cp.id = newId(isWall(it) ? "w" : "c"); cp.name = it.name + " copy";
   const n = [-Math.sin(rad(it.rotationDeg || 0)), Math.cos(rad(it.rotationDeg || 0))];
   cp.x = round2(it.x + n[0] * 6); cp.z = round2(it.z + n[1] * 6);
@@ -1440,6 +1485,11 @@ function duplicate(id) {
 }
 function removeItem(id) {
   const it = findItem(id); if (!it) return;
+  if (isPart(it)) {                                           // building walls are knocked down, not deleted: they can come back
+    if (it.removed) return;
+    it.removed = true; changed(); commit(); renderSide();
+    toast(it.name + " knocked down.", { label: "Undo", fn: () => stepHistory(-1) }); return;
+  }
   const arr = isWall(it) ? L.walls : L.ceilings; arr.splice(arr.indexOf(it), 1);
   if (selId === id) selId = null;
   changed(); commit(); renderSide();
@@ -1487,6 +1537,8 @@ function migrate(d) {
     if (!w.id) w.id = "w" + Math.random().toString(36).slice(2, 7);
   });
   d.ceilings.forEach(c => { ["x", "z", "rotationDeg", "tiltDeg", "heightFt"].forEach(k => { c[k] = +c[k] || 0; }); ["panelsWide", "panelsLong"].forEach(k => { c[k] = Math.max(1, Math.round(+c[k] || 1)); }); if (!c.id) c.id = "c" + Math.random().toString(36).slice(2, 7); });
+  if (!Array.isArray(d.partitions)) d.partitions = defaultPartitions();   // layouts from before building walls were removable
+  d.partitions.forEach(p => { p.kind = "partition"; p.removed = !!p.removed; p.heightFt = +p.heightFt || STUDIO.partition.heightFt; });
   d.name = d.name || "Untitled layout"; d.app = "grim-repositioner"; d.version = 1;
   return d;
 }
@@ -1567,7 +1619,7 @@ function printPlan() {
     '<img alt="Stage plan" src="' + cv.toDataURL("image/png") + '">' +
     '<div class="sched"><table><thead><tr><th>Piece</th><th>Sections</th><th>Wide × high</th><th>Panels</th><th>Size</th></tr></thead><tbody>' + rows +
     '<tr><td colspan="3"><b>Total</b></td><td><b>' + t.all + '</b></td><td>' + t.walls + ' wall + ' + t.ceilings + ' ceiling</td></tr></tbody></table>' +
-    '<div><b>Omens</b>' + (om.length ? '<ul>' + om.map(o => '<li class="warn">' + escapeHtml(o.text) + '</li>').join("") + '</ul>' : '<p>None. Everything fits the room.</p>') +
+    '<div>' + ((L.partitions || []).some(p => p.removed) ? '<p><b>Building walls removed:</b> ' + L.partitions.filter(p => p.removed).map(p => escapeHtml(p.name) + " (" + fmtLen(partLen(p)) + ")").join(", ") + '</p>' : '') + '<b>Omens</b>' + (om.length ? '<ul>' + om.map(o => '<li class="warn">' + escapeHtml(o.text) + '</li>').join("") + '</ul>' : '<p>None. Everything fits the room.</p>') +
     '<p style="color:#666;font-size:8pt">Plan: volume at top, north down. Dashed yellow = 3.5′ fire lane. Dashed violet = ceilings' + (showGhost ? "; faint dashes = the stage as it stands" : "") + '.</p></div></div>';
   setTimeout(() => window.print(), 60);
 }
@@ -1622,6 +1674,7 @@ document.addEventListener("keydown", e => {
   if (e.key.toLowerCase() === "f") { view.userMoved = false; resizePlan(); return; }
   const it = selId && findItem(selId); if (!it) return;
   if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); removeItem(it.id); return; }
+  if (isPart(it)) return;                                     // building walls don't turn or nudge
   if (e.key === "[" || e.key === "]") { it.rotationDeg = normDeg((it.rotationDeg || 0) + (e.key === "]" ? 1 : -1) * (e.shiftKey ? 1 : 15)); done(); return; }
   const ar = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
   if (ar) { e.preventDefault(); const st = e.shiftKey ? 1 / 12 : snapFt; it.x = round2(it.x + ar[0] * st); it.z = round2(it.z + ar[1] * st); done(); }
