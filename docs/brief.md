@@ -21,7 +21,33 @@ this need, and does it fit the room?" before anyone touches a truss.
 
 Everything else was dropped: the film camera and lenses, reflections, people and rigs, vehicles and sets,
 blocking and moves, playback and 360° content, the plate canvas, the prompt maker, the storyboard and script,
-the phone viewer and publishing.
+the phone viewer and publishing. (One car and one person came back as scale references; see below.)
+
+## Studio or open space
+
+The tool also mocks up **pop-up stages** for clients, away from the studio. Each layout has a `space`:
+
+- **Studio** (default): the Lumostage room as above, with all its clash checks.
+- **Open space**: a neutral floor with no room. The plan shows only the grid (1′ / 5′ / 10′) and Fit frames the layout.
+  3D shows a plain floor fading into fog. The studio, the building walls, the ghost and the room checks (studio wall,
+  rooms, partition, column, fire lane, room height, ceiling past the wall, rig range) are all off. What still runs:
+  walls overlapping, a wall taller than a ceiling above it, and panels owned.
+- Switch with **Studio | Open space** in the top bar. The layout stays where it is, and the choice saves with it and undoes.
+  **File → New pop-up in open space** starts from the main volume on its own, with the car and person in it.
+
+## Scale reference: car and person
+
+For showing a client how big the stage is. Both are in every layout (`refs`), toggled together with **Car + person**
+(R), or one at a time with the eye in the list. They select, drag and turn like a ceiling (Delete hides them). They aren't LED,
+so they add no panels and no clash checks.
+
+- **Car:** Mock & Roll's muscle car (`muscle-car.glb`), 15′ 8½″ long, 6′ 10½″ wide with mirrors, 4′ 10½″ high: an
+  average car's length. Its size is fixed. The red handle sits past its nose. (A branded "Lumomobile" may replace it later:
+  drop a GLB in as `assets/ref/car.glb` with its nose to −X, set `REF.car` to its size, and re-run the embed script.)
+- **Person:** Mock & Roll's grey low-poly standing man (`person-08.glb`), scaled to a standing height of **6′** by default
+  (editable). By default they stand just outside the driver's door, facing the shooting floor.
+- The models live in `assets/ref/*.glb`. `python scripts/embed-models.py` packs them into `assets/ref/models.js`, so they
+  load from a double-clicked `index.html` (browsers won't fetch files over `file://`). A plain box stands in until a model loads.
 
 ## The model
 
@@ -75,6 +101,6 @@ the phone viewer and publishing.
 
 ## Stack
 
-Single `index.html`, vanilla Three.js r128 (`vendor/three/three.min.js`) for 3D and a 2D canvas for the plan.
+Single `index.html`, vanilla Three.js r128 (`vendor/three/three.min.js`, plus `GLTFLoader.js` for the scale models) for 3D and a 2D canvas for the plan.
 No build step. It runs from the file or `python serve.py` (port 8139). The title font (Pirata One) loads from Google
 Fonts when online and falls back to Georgia offline.

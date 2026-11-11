@@ -129,6 +129,7 @@
   .glyph.wall { border: 2.5px solid var(--spectre); border-bottom: 0; border-radius: 8px 8px 0 0; }
   .glyph.mobile { border-top: 3px solid var(--spectre); border-bottom: 4px solid #7a6a54; height: 10px; }
   .glyph.ceil { border: 1.5px dashed var(--ceil); border-radius: 2px; height: 11px; }
+  .glyph.ref { width: 12px; height: 7px; border: 1.5px solid #c9c2b4; border-radius: 3px 5px 2px 2px; }
   .glyph.part { height: 4px; background: #8f8798; border-radius: 1px; }
   .row.gone .glyph.part { background: transparent; border-top: 2px dashed var(--ghost); }
   .row.gone .rn { color: var(--ash); text-decoration: line-through; text-decoration-color: var(--dim); }
@@ -280,8 +281,13 @@
     <button data-v="split" title="Plan and 3D side by side (2)">Split</button>
     <button data-v="3d" title="3D only (3)">3D</button>
   </div>
+  <div class="seg" id="spaceSeg" role="group" aria-label="Space">
+    <button data-s="studio" title="The Lumostage studio: room, doors, column, fire lane and its clash checks">Studio</button>
+    <button data-s="open" title="A neutral open floor for pop-up stages: no room, just the layout">Open space</button>
+  </div>
   <div class="vr"></div>
   <button id="ghostBtn" class="ghostBtn" title="Show the current stage as a ghost under your layout (G)">Ghost</button>
+  <button id="refBtn" class="ghostBtn" title="Show a car and a 6′ person for scale (R)">Car + person</button>
   <button id="measureBtn" class="ghostBtn" title="Drag on the plan to measure (M)">Measure</button>
   <select id="snapSel" title="Snap step for dragging (hold Shift to move freely)" aria-label="Snap step"></select>
   <button id="unitBtn" class="ghostBtn" title="Switch between feet & inches and metres">ft·in</button>
@@ -298,6 +304,7 @@
       <button type="button" class="mi" role="menuitem" data-file="export">Export JSON…</button>
       <button type="button" class="mi" role="menuitem" data-file="import">Import JSON…</button>
       <div class="msep"></div>
+      <button type="button" class="mi" role="menuitem" data-file="newOpen">New pop-up in open space</button>
       <button type="button" class="mi danger" role="menuitem" data-file="new">Start over from today's stage</button>
     </div>
   </div>
@@ -325,7 +332,7 @@
 <main id="views">
   <div class="view" id="planWrap">
     <canvas id="plan"></canvas>
-    <span class="viewTag">Plan · volume at top</span>
+    <span class="viewTag" id="planTag">Plan · volume at top</span>
     <div class="viewBtns"><button id="fitBtn" title="Fit the studio in view (F)">Fit</button></div>
     <span class="hint" id="planHint">Drag a piece to move it · drag the red handle to turn · [ ] turn 15° · arrows nudge · Shift = no snap · wheel zooms · drag empty floor to pan</span>
     <span class="readout num" id="planReadout"></span>
@@ -342,6 +349,8 @@
 <div id="print"></div>
 
 <script src="vendor/three/three.min.js"></script>
+<script src="vendor/three/GLTFLoader.js"></script>
+<script src="assets/ref/models.js"></script>
 <script>
 "use strict";
 // ======================================================================
@@ -393,9 +402,21 @@ function defaultPartitions() {
   const P = STUDIO.partition.path, names = ["Partition along the tip line", "Partition north–south", "Partition to the kitchen"];
   return P.slice(0, -1).map((a, i) => ({ id: "p" + (i + 1), kind: "partition", name: names[i] || "Partition " + (i + 1), a: a.slice(), b: P[i + 1].slice(), heightFt: STUDIO.partition.heightFt, removed: false }));
 }
+// Scale reference: a car and a person, for showing a client how big the stage is. They sit in the layout
+// (x / z / turn like a ceiling) but aren't LED: no panels, no clash checks. Car sizes are the model's
+// (Mock & Roll's muscle car, an average car's length, nose to -X, width with mirrors); the person stands
+// outside the driver's door.
+const REF = { car: { lengthFt: 15.7, widthFt: 6.86, bodyWidthFt: 6.3, heightFt: 4.87 }, person: { heightFt: 6, widthFt: 1.8, depthFt: 1.1 } };
+function defaultRefs(on, cx, cz) {
+  cx = cx || 0; cz = cz == null ? -6 : cz;
+  return [
+    { id: "car", kind: "ref", ref: "car", name: "Car", x: cx, z: cz, rotationDeg: 0, visible: !!on },
+    { id: "person", kind: "ref", ref: "person", name: "Person", x: cx - 1.5, z: Math.round((cz + REF.car.widthFt / 2 + 1.4) * 100) / 100, rotationDeg: 0, heightFt: REF.person.heightFt, visible: !!on }
+  ];
+}
 function defaultLayout() {
   return {
-    app: "grim-repositioner", version: 1, name: "Current stage",
+    app: "grim-repositioner", version: 1, name: "Current stage", space: "studio", refs: defaultRefs(false),
     walls: [
       // Main volume: 36 x 10 at 5° (a half circle, r 18′ 9.6″), footed 6¾″ up. Apex 18′ 9.6″ behind the tip line (z = -0.42).
       { id: "w1", name: "Main volume", panelsHigh: 10, footingFt: 0.5625, pin: "middle", x: 0, z: -19.224, rotationDeg: 0,
@@ -413,6 +434,11 @@ function defaultLayout() {
   };
 }
 const GHOST = defaultLayout();
+// A pop-up starts in the open: the main volume on its own, with the car and person in it.
+function openSpaceLayout() {
+  const d = defaultLayout(), w = d.walls[0];
+  return Object.assign(d, { name: "Pop-up stage", space: "open", walls: [w], ceilings: [], refs: defaultRefs(true, 0, w.z + 12) });
+}
 
 const PRESETS = [
   { name: "Current volume · 36 @ 5°", segments: [{ panels: 36, curveDeg: 5 }] },
@@ -477,8 +503,11 @@ function toast(msg, action) {
   t.classList.add("show"); clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove("show"), action ? 6000 : 2200);
 }
-function findItem(id) { return L.walls.find(w => w.id === id) || L.ceilings.find(c => c.id === id) || (L.partitions || []).find(p => p.id === id) || null; }
+function findItem(id) { return L.walls.find(w => w.id === id) || L.ceilings.find(c => c.id === id) || (L.partitions || []).find(p => p.id === id) || (L.refs || []).find(r => r.id === id) || null; }
 function isWall(it) { return !!it && Array.isArray(it.segments); }
+function isRef(it) { return !!it && it.kind === "ref"; }
+function isCeil(it) { return !!it && !isWall(it) && !isPart(it) && !isRef(it); }
+const inStudio = () => L.space !== "open";
 function isPart(it) { return !!it && it.kind === "partition"; }
 function partLen(p) { return Math.hypot(p.b[0] - p.a[0], p.b[1] - p.a[1]); }
 function newId(prefix) { let n = 1; while (findItem(prefix + n)) n++; return prefix + n; }
@@ -622,15 +651,18 @@ function computeOmens() {
   const G = {}; walls.forEach(w => { G[w.id] = wallGeom(w); });
   const polysOf = w => [G[w.id].body, G[w.id].deck].filter(p => p && p.length > 2);
   const outside = p => p.some(q => q[0] < S.xMin - 0.01 || q[0] > S.xMax + 0.01 || q[1] < S.zBack - 0.01 || q[1] > S.zFront + 0.01);
+  const room = inStudio();                                   // in open space there's no room to clash with
   walls.forEach(w => {
     const g = G[w.id], polys = polysOf(w); if (!polys.length) return;
-    if (polys.some(outside)) out.push({ lvl: "bad", id: w.id, text: w.name + " runs through the studio wall" });
-    S.rooms.forEach(r => { const rp = rectPoly(r.x0, r.x1, r.z0, r.z1); if (polys.some(p => polysOverlap(p, rp))) out.push({ lvl: "bad", id: w.id, text: w.name + " cuts into the " + r.name.toLowerCase().replace(/ · wr · wr/, " / washrooms") }); });
-    partitionSegs().forEach(sg => { if (polys.some(p => p.some((q, i) => segsCross(q, p[(i + 1) % p.length], sg[0], sg[1])))) out.push({ lvl: "bad", id: w.id, text: w.name + " crosses the " + sg[2].name.toLowerCase() }); });
-    if (polys.some(p => polysOverlap(p, pillarKeepOut(false)))) out.push({ lvl: "bad", id: w.id, text: w.name + " hits the column" });
-    else if (polys.some(p => polysOverlap(p, pillarKeepOut(true)))) out.push({ lvl: "warn", id: w.id, text: w.name + " is inside the column's 6″ clearance" });
-    if (g.top > S.wallHeightFt) out.push({ lvl: "bad", id: w.id, text: w.name + " is " + fmtLen(g.top) + " tall, taller than the room (" + fmtLen(S.wallHeightFt) + ")" });
-    if (polys.some(p => p.some(q => inLane(q[0], q[1])) || polyEdgesCross(p, LANE_INNER))) out.push({ lvl: "warn", id: w.id, text: w.name + " sits in the " + S.fireLaneFt + "′ fire lane" });
+    if (room) {
+      if (polys.some(outside)) out.push({ lvl: "bad", id: w.id, text: w.name + " runs through the studio wall" });
+      S.rooms.forEach(r => { const rp = rectPoly(r.x0, r.x1, r.z0, r.z1); if (polys.some(p => polysOverlap(p, rp))) out.push({ lvl: "bad", id: w.id, text: w.name + " cuts into the " + r.name.toLowerCase().replace(/ · wr · wr/, " / washrooms") }); });
+      partitionSegs().forEach(sg => { if (polys.some(p => p.some((q, i) => segsCross(q, p[(i + 1) % p.length], sg[0], sg[1])))) out.push({ lvl: "bad", id: w.id, text: w.name + " crosses the " + sg[2].name.toLowerCase() }); });
+      if (polys.some(p => polysOverlap(p, pillarKeepOut(false)))) out.push({ lvl: "bad", id: w.id, text: w.name + " hits the column" });
+      else if (polys.some(p => polysOverlap(p, pillarKeepOut(true)))) out.push({ lvl: "warn", id: w.id, text: w.name + " is inside the column's 6″ clearance" });
+      if (g.top > S.wallHeightFt) out.push({ lvl: "bad", id: w.id, text: w.name + " is " + fmtLen(g.top) + " tall, taller than the room (" + fmtLen(S.wallHeightFt) + ")" });
+      if (polys.some(p => p.some(q => inLane(q[0], q[1])) || polyEdgesCross(p, LANE_INNER))) out.push({ lvl: "warn", id: w.id, text: w.name + " sits in the " + S.fireLaneFt + "′ fire lane" });
+    }
     ceils.forEach(c => {
       const cg = ceilGeom(c);
       if (polysOf(w).some(p => polysOverlap(p, cg.poly)) && g.top > cg.low - 0.05)
@@ -641,7 +673,7 @@ function computeOmens() {
     const a = polysOf(walls[i]), b = polysOf(walls[j]);
     if (a.some(p => b.some(q => polysOverlap(p, q)))) out.push({ lvl: "bad", id: walls[j].id, text: walls[i].name + " and " + walls[j].name + " overlap" });
   }
-  ceils.forEach(c => {
+  if (room) ceils.forEach(c => {
     const cg = ceilGeom(c), R = S.ceilingRig;
     if (outside(cg.poly)) out.push({ lvl: "bad", id: c.id, text: c.name + " hangs past the studio wall" });
     if (cg.high > R.maxFt + 0.01) out.push({ lvl: "warn", id: c.id, text: c.name + " is above the rig range (" + fmtLen(R.maxFt) + " max)" });
@@ -669,20 +701,40 @@ const THEMES = {
     wall: "#8f8798", room: "#1d1a22", roomLine: "#4a4352", roomText: "#857d8d", lane: "#d8b54a", laneFill: "rgba(216,181,74,.06)",
     pillar: "#6f6876", ghost: "rgba(154,140,208,.85)", body: "#2a2530", face: "#7cf0c5", joint: "rgba(124,240,197,.5)",
     deck: "#3a332b", deckLine: "#6b5d4a", ceilFill: "rgba(164,147,255,.09)", ceil: "#a493ff", sel: "#ff3b3b", text: "#e9e2d0", dim: "#a39bab",
-    fire: "#2ecc71", door: "#9a93a0", grade: "#b4b9be", measure: "#ffd166", label: "rgba(11,10,13,.82)" },
+    fire: "#2ecc71", door: "#9a93a0", grade: "#b4b9be", measure: "#ffd166", label: "rgba(11,10,13,.82)", ref: "#c9c2b4", refFill: "rgba(201,194,180,.1)" },
   paper: { bg: "#ffffff", floor: "#ffffff", grid1: "rgba(0,0,0,.03)", grid5: "rgba(0,0,0,.07)", grid10: "rgba(0,0,0,.13)",
     wall: "#222", room: "#efefef", roomLine: "#888", roomText: "#555", lane: "#c08f00", laneFill: "rgba(192,143,0,.08)",
     pillar: "#555", ghost: "rgba(110,90,190,.8)", body: "#555", face: "#00865a", joint: "rgba(0,134,90,.55)",
     deck: "#ddd3c4", deckLine: "#8a7a62", ceilFill: "rgba(90,68,208,.07)", ceil: "#5a44d0", sel: "#c00", text: "#111", dim: "#555",
-    fire: "#1a9a50", door: "#777", grade: "#999", measure: "#c07000", label: "rgba(255,255,255,.88)" }
+    fire: "#1a9a50", door: "#777", grade: "#999", measure: "#c07000", label: "rgba(255,255,255,.88)", ref: "#666", refFill: "rgba(0,0,0,.06)" }
 };
 function w2s(q, v) { v = v || view; return [q[0] * v.sc + v.ox, q[1] * v.sc + v.oy]; }
 function s2w(x, y) { return [(x - view.ox) / view.sc, (y - view.oy) / view.sc]; }
+// What Fit frames: the room in the studio; in open space, everything in the layout with some floor round it.
+function fitBounds() {
+  const S = STUDIO;
+  if (inStudio()) return [S.xMin, S.xMax, S.zBack, S.zFront];
+  const pts = [];
+  L.walls.filter(w => w.visible !== false).forEach(w => { const g = wallGeom(w); pts.push(...g.body, ...(g.deck || [])); });
+  L.ceilings.filter(c => c.visible !== false).forEach(c => pts.push(...ceilGeom(c).poly));
+  (L.refs || []).filter(r => r.visible !== false).forEach(r => pts.push(...refPoly(r)));
+  if (!pts.length) return [-20, 20, -15, 15];
+  const xs = pts.map(q => q[0]), zs = pts.map(q => q[1]), m = 8;
+  let b = [Math.min(...xs) - m, Math.max(...xs) + m, Math.min(...zs) - m, Math.max(...zs) + m];
+  const grow = (i, min) => { const c = (b[i] + b[i + 1]) / 2, h = Math.max(b[i + 1] - b[i], min) / 2; b[i] = c - h; b[i + 1] = c + h; };
+  grow(0, 40); grow(2, 30); return b;
+}
 function fitView(v, W, H, pad) {
-  const S = STUDIO, w = S.xMax - S.xMin, h = S.zFront - S.zBack;
+  const b = fitBounds(), w = b[1] - b[0], h = b[3] - b[2];
   v.sc = Math.min((W - pad * 2) / w, (H - pad * 2) / h);
-  v.ox = W / 2 - (S.xMin + w / 2) * v.sc; v.oy = H / 2 - (S.zBack + h / 2) * v.sc;
+  v.ox = W / 2 - (b[0] + w / 2) * v.sc; v.oy = H / 2 - (b[2] + h / 2) * v.sc;
   return v;
+}
+// A reference's footprint on the floor (car: body with mirrors; person: shoulders).
+function refPoly(r) {
+  const W = toWorldFn(r.x, r.z, r.rotationDeg);
+  if (r.ref === "car") { const l = REF.car.lengthFt / 2, w = REF.car.widthFt / 2; return rectPoly(-l, l, -w, w).map(W); }
+  const k = (+r.heightFt || 6) / 6, w = REF.person.widthFt / 2 * k, d = REF.person.depthFt / 2 * k; return rectPoly(-w, w, -d, d).map(W);
 }
 function resizePlan() {
   const r = $("#planWrap").getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -706,47 +758,60 @@ function drawPlan(ctx, W, H, v, th, opts) {
     ctx.fillStyle = o.color || th.text; ctx.fillText(txt, s[0], s[1]);
   };
   ctx.fillStyle = th.bg; ctx.fillRect(0, 0, W, H);
-  // Floor + grid (clipped to the room).
-  ctx.save(); line(rectPoly(S.xMin, S.xMax, S.zBack, S.zFront), true); ctx.fillStyle = th.floor; ctx.fill(); ctx.clip();
-  [[1, th.grid1, 7], [5, th.grid5, 1.5], [10, th.grid10, 0]].forEach(([step, col, minSc]) => {
-    if (v.sc < minSc) return;
-    ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.beginPath();
-    for (let x = Math.ceil(S.xMin / step) * step; x <= S.xMax; x += step) { const a = P([x, S.zBack]), b = P([x, S.zFront]); ctx.moveTo(Math.round(a[0]) + .5, a[1]); ctx.lineTo(Math.round(b[0]) + .5, b[1]); }
-    for (let z = Math.ceil(S.zBack / step) * step; z <= S.zFront; z += step) { const a = P([S.xMin, z]), b = P([S.xMax, z]); ctx.moveTo(a[0], Math.round(a[1]) + .5); ctx.lineTo(b[0], Math.round(b[1]) + .5); }
-    ctx.stroke();
-  });
-  // Fire lane: a tinted band and a dashed line on its inner edge.
-  ctx.beginPath(); [STUDIO.laneOutline, LANE_INNER].forEach(pl => pl.forEach((q, i) => { const s = P(q); i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]); }));
-  ctx.fillStyle = th.laneFill; ctx.fill("evenodd");
-  ctx.setLineDash([8 * k, 6 * k]); ctx.strokeStyle = th.lane; ctx.lineWidth = 1.2 * k; line(LANE_INNER, true); ctx.stroke(); ctx.setLineDash([]);
-  ctx.restore();
-  // Rooms, partition, column.
-  S.rooms.forEach(r => { line(rectPoly(r.x0, r.x1, r.z0, r.z1), true); ctx.fillStyle = th.room; ctx.fill(); ctx.strokeStyle = th.roomLine; ctx.lineWidth = 1 * k; ctx.stroke();
-    label(r.name, [(r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2], { color: th.roomText, box: false, size: 11 }); });
-  ctx.lineCap = "butt";
-  (L.partitions || []).forEach(pt => {                      // building walls: solid, or dashed where removed in this layout
-    ctx.strokeStyle = pt.removed ? th.ghost : th.wall; ctx.lineWidth = pt.removed ? 1.5 * k : Math.max(2, 0.4 * v.sc);
-    if (pt.removed) ctx.setLineDash([5 * k, 4 * k]);
-    line([pt.a, pt.b]); ctx.stroke(); ctx.setLineDash([]);
-  });
-  { const p = S.pillar, h = p.sizeFt / 2, c = h + p.clearanceFt;
-    line(rectPoly(p.x - h, p.x + h, p.z - h, p.z + h), true); ctx.fillStyle = th.pillar; ctx.fill();
-    ctx.setLineDash([4 * k, 3 * k]); ctx.strokeStyle = th.lane; ctx.lineWidth = 1 * k; line(rectPoly(p.x - c, p.x + c, p.z - c, p.z + c), true); ctx.stroke(); ctx.setLineDash([]);
-    if (v.sc > 4) label("Column", [p.x, p.z + c + 1.4], { color: th.dim, box: false, size: 10 }); }
-  // Studio walls + doors.
-  ctx.strokeStyle = th.wall; ctx.lineWidth = Math.max(3, 0.6 * v.sc); ctx.lineJoin = "miter"; line(rectPoly(S.xMin, S.xMax, S.zBack, S.zFront), true); ctx.stroke();
-  DOORS.forEach(d => {
-    ctx.strokeStyle = d.type === "fire" ? th.fire : d.type === "grade" ? th.grade : th.door; ctx.lineWidth = Math.max(4, 0.7 * v.sc);
-    line(d.ends); ctx.stroke();
-    if (v.sc > 3.5) { const m = [(d.ends[0][0] + d.ends[1][0]) / 2 + d.inward[0] * 2.2, (d.ends[0][1] + d.ends[1][1]) / 2 + d.inward[1] * 2.2];
-      label(d.label, m, { color: d.type === "fire" ? th.fire : th.dim, box: false, size: 10 }); }
-  });
-  // Ghost of the stage as it stands.
-  if (opts.ghost) {
-    ctx.setLineDash([5 * k, 4 * k]); ctx.strokeStyle = th.ghost; ctx.lineWidth = 1.3 * k;
-    GHOST.walls.forEach(w => { const g = wallGeom(w); if (g.body.length) { line(g.body, true); ctx.stroke(); } if (g.deck) { line(g.deck, true); ctx.stroke(); } });
-    GHOST.ceilings.forEach(c => { line(ceilGeom(c).poly, true); ctx.stroke(); });
-    ctx.setLineDash([]);
+  if (!inStudio()) {
+    // Open space: a floor to the edge of the view, grid only. No room, no ghost of the studio's stage.
+    const x0 = (0 - v.ox) / v.sc, x1 = (W - v.ox) / v.sc, z0 = (0 - v.oy) / v.sc, z1 = (H - v.oy) / v.sc;
+    ctx.fillStyle = th.floor; ctx.fillRect(0, 0, W, H);
+    [[1, th.grid1, 7], [5, th.grid5, 1.5], [10, th.grid10, 0]].forEach(([step, col, minSc]) => {
+      if (v.sc < minSc) return;
+      ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.beginPath();
+      for (let x = Math.ceil(x0 / step) * step; x <= x1; x += step) { const a = P([x, z0]); ctx.moveTo(Math.round(a[0]) + .5, 0); ctx.lineTo(Math.round(a[0]) + .5, H); }
+      for (let z = Math.ceil(z0 / step) * step; z <= z1; z += step) { const a = P([x0, z]); ctx.moveTo(0, Math.round(a[1]) + .5); ctx.lineTo(W, Math.round(a[1]) + .5); }
+      ctx.stroke();
+    });
+  } else {
+    // Floor + grid (clipped to the room).
+    ctx.save(); line(rectPoly(S.xMin, S.xMax, S.zBack, S.zFront), true); ctx.fillStyle = th.floor; ctx.fill(); ctx.clip();
+    [[1, th.grid1, 7], [5, th.grid5, 1.5], [10, th.grid10, 0]].forEach(([step, col, minSc]) => {
+      if (v.sc < minSc) return;
+      ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.beginPath();
+      for (let x = Math.ceil(S.xMin / step) * step; x <= S.xMax; x += step) { const a = P([x, S.zBack]), b = P([x, S.zFront]); ctx.moveTo(Math.round(a[0]) + .5, a[1]); ctx.lineTo(Math.round(b[0]) + .5, b[1]); }
+      for (let z = Math.ceil(S.zBack / step) * step; z <= S.zFront; z += step) { const a = P([S.xMin, z]), b = P([S.xMax, z]); ctx.moveTo(a[0], Math.round(a[1]) + .5); ctx.lineTo(b[0], Math.round(b[1]) + .5); }
+      ctx.stroke();
+    });
+    // Fire lane: a tinted band and a dashed line on its inner edge.
+    ctx.beginPath(); [STUDIO.laneOutline, LANE_INNER].forEach(pl => pl.forEach((q, i) => { const s = P(q); i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]); }));
+    ctx.fillStyle = th.laneFill; ctx.fill("evenodd");
+    ctx.setLineDash([8 * k, 6 * k]); ctx.strokeStyle = th.lane; ctx.lineWidth = 1.2 * k; line(LANE_INNER, true); ctx.stroke(); ctx.setLineDash([]);
+    ctx.restore();
+    // Rooms, partition, column.
+    S.rooms.forEach(r => { line(rectPoly(r.x0, r.x1, r.z0, r.z1), true); ctx.fillStyle = th.room; ctx.fill(); ctx.strokeStyle = th.roomLine; ctx.lineWidth = 1 * k; ctx.stroke();
+      label(r.name, [(r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2], { color: th.roomText, box: false, size: 11 }); });
+    ctx.lineCap = "butt";
+    (L.partitions || []).forEach(pt => {                      // building walls: solid, or dashed where removed in this layout
+      ctx.strokeStyle = pt.removed ? th.ghost : th.wall; ctx.lineWidth = pt.removed ? 1.5 * k : Math.max(2, 0.4 * v.sc);
+      if (pt.removed) ctx.setLineDash([5 * k, 4 * k]);
+      line([pt.a, pt.b]); ctx.stroke(); ctx.setLineDash([]);
+    });
+    { const p = S.pillar, h = p.sizeFt / 2, c = h + p.clearanceFt;
+      line(rectPoly(p.x - h, p.x + h, p.z - h, p.z + h), true); ctx.fillStyle = th.pillar; ctx.fill();
+      ctx.setLineDash([4 * k, 3 * k]); ctx.strokeStyle = th.lane; ctx.lineWidth = 1 * k; line(rectPoly(p.x - c, p.x + c, p.z - c, p.z + c), true); ctx.stroke(); ctx.setLineDash([]);
+      if (v.sc > 4) label("Column", [p.x, p.z + c + 1.4], { color: th.dim, box: false, size: 10 }); }
+    // Studio walls + doors.
+    ctx.strokeStyle = th.wall; ctx.lineWidth = Math.max(3, 0.6 * v.sc); ctx.lineJoin = "miter"; line(rectPoly(S.xMin, S.xMax, S.zBack, S.zFront), true); ctx.stroke();
+    DOORS.forEach(d => {
+      ctx.strokeStyle = d.type === "fire" ? th.fire : d.type === "grade" ? th.grade : th.door; ctx.lineWidth = Math.max(4, 0.7 * v.sc);
+      line(d.ends); ctx.stroke();
+      if (v.sc > 3.5) { const m = [(d.ends[0][0] + d.ends[1][0]) / 2 + d.inward[0] * 2.2, (d.ends[0][1] + d.ends[1][1]) / 2 + d.inward[1] * 2.2];
+        label(d.label, m, { color: d.type === "fire" ? th.fire : th.dim, box: false, size: 10 }); }
+    });
+    // Ghost of the stage as it stands.
+    if (opts.ghost) {
+      ctx.setLineDash([5 * k, 4 * k]); ctx.strokeStyle = th.ghost; ctx.lineWidth = 1.3 * k;
+      GHOST.walls.forEach(w => { const g = wallGeom(w); if (g.body.length) { line(g.body, true); ctx.stroke(); } if (g.deck) { line(g.deck, true); ctx.stroke(); } });
+      GHOST.ceilings.forEach(c => { line(ceilGeom(c).poly, true); ctx.stroke(); });
+      ctx.setLineDash([]);
+    }
   }
   // LED walls.
   const walls = L.walls.filter(w => w.visible !== false), geoms = {};
@@ -765,6 +830,28 @@ function drawPlan(ctx, W, H, v, th, opts) {
     if (g.bounds.length > 2) g.bounds.slice(1, -1).forEach(i => {   // section breaks
       const s = P(g.wpts[i]); ctx.fillStyle = th.text; ctx.beginPath(); ctx.arc(s[0], s[1], 3 * k, 0, Math.PI * 2); ctx.fill();
     });
+  });
+  // Scale reference: the car (body, glass lines, a chevron at the nose) and the person (shoulders, facing tick).
+  (L.refs || []).filter(r => r.visible !== false).forEach(r => {
+    const Wf = toWorldFn(r.x, r.z, r.rotationDeg);
+    ctx.strokeStyle = th.ref; ctx.fillStyle = th.refFill; ctx.lineWidth = 1.3 * k; ctx.lineJoin = "round";
+    if (r.ref === "car") {
+      const l = REF.car.lengthFt / 2, w = REF.car.bodyWidthFt / 2;
+      line([[-l + 1.2, -w], [l - 0.8, -w], [l, -w + 0.8], [l, w - 0.8], [l - 0.8, w], [-l + 1.2, w], [-l, w - 1.2], [-l, -w + 1.2]].map(Wf), true); ctx.fill(); ctx.stroke();
+      ctx.lineWidth = 1 * k; line([[-3.4, -w + 0.5], [-2.6, 0], [-3.4, w - 0.5]].map(Wf)); ctx.stroke();       // windshield
+      line([[4.6, -w + 0.5], [4.1, 0], [4.6, w - 0.5]].map(Wf)); ctx.stroke();                                   // rear window
+      line([[-l + 2.2, -1], [-l + 1.2, 0], [-l + 2.2, 1]].map(Wf)); ctx.stroke();                                // nose
+    } else {
+      const kk = (+r.heightFt || 6) / 6, w = REF.person.widthFt / 2 * kk, d = REF.person.depthFt / 2 * kk, c = P([r.x, r.z]);
+      ctx.save(); ctx.translate(c[0], c[1]); ctx.rotate(rad(r.rotationDeg || 0));
+      ctx.beginPath(); ctx.ellipse(0, 0, w * v.sc, d * v.sc, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, 0.42 * kk * v.sc, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, d * v.sc); ctx.lineTo(0, (d + 0.5) * v.sc); ctx.stroke(); ctx.restore();
+    }
+    if (r.id === opts.sel || opts.print || v.sc > 5) {
+      const txt = r.ref === "car" ? r.name + " · " + fmtLen(REF.car.lengthFt) : r.name + " · " + fmtLen(+r.heightFt || 6);
+      label(txt, Wf(r.ref === "car" ? [0, -REF.car.widthFt / 2 - 1.2 - 6 * k / v.sc] : [0, REF.person.depthFt + 1.2 + 6 * k / v.sc]), { size: 10, color: r.id === opts.sel ? th.sel : th.ref });
+    }
   });
   // Ceilings (above the walls, so drawn over them, see-through).
   L.ceilings.filter(c => c.visible !== false).forEach(c => {
@@ -825,6 +912,8 @@ function drawPlan(ctx, W, H, v, th, opts) {
       }
       // Run-along length at the two ends.
       if (g.N) { label("face " + fmtLen(g.arcLen), [g.wpts[g.N][0] + (g.wpts[g.N][0] - g.wpts[g.N - 1][0]) / g.s * 2.2, g.wpts[g.N][1] + (g.wpts[g.N][1] - g.wpts[g.N - 1][1]) / g.s * 2.2], { size: 10, color: th.dim }); }
+    } else if (isRef(sel)) {
+      line(refPoly(sel), true); ctx.stroke();
     } else {
       line(ceilGeom(sel).poly, true); ctx.stroke();
       const cg = ceilGeom(sel);
@@ -865,9 +954,12 @@ function handleDist(v) { return Math.max(5, 46 / (v || view).sc); }
 function handleOf(it) {
   if (isPart(it)) return null;                                // building walls don't move
   const dist = handleDist();
-  if (isWall(it)) { const n = [-Math.sin(rad(it.rotationDeg || 0)), Math.cos(rad(it.rotationDeg || 0))]; return [it.x + n[0] * dist, it.z + n[1] * dist]; }
+  if (isWall(it) || (isRef(it) && it.ref === "person")) { const n = [-Math.sin(rad(it.rotationDeg || 0)), Math.cos(rad(it.rotationDeg || 0))]; return [it.x + n[0] * dist, it.z + n[1] * dist]; }
+  if (isRef(it)) return toWorldFn(it.x, it.z, it.rotationDeg)([-REF.car.lengthFt / 2 - dist, 0]);   // out past the car's nose
   const cg = ceilGeom(it); return cg.W2([0, -cg.Lp / 2 - dist]);
 }
+// Where the handle sits relative to the piece's turn: in front of a wall or person, past a car's nose, behind a ceiling.
+function handleTurn(it) { return isWall(it) || (isRef(it) && it.ref === "person") ? -90 : isRef(it) ? 180 : 90; }
 function hitTest(q) {
   const tol = 6 / view.sc;
   const sel = selId && findItem(selId);
@@ -880,7 +972,8 @@ function hitTest(q) {
     if (g.N && (pointInPoly(q[0], q[1], g.body) || g.wpts.some((p, i) => i < g.N && distToSeg(q[0], q[1], p, g.wpts[i + 1]) < tol))) return { id: w.id };
     if (g.deck && pointInPoly(q[0], q[1], g.deck)) return { id: w.id };
   }
-  for (const pt of L.partitions || []) if (distToSeg(q[0], q[1], pt.a, pt.b) < Math.max(0.6, 7 / view.sc)) return { id: pt.id };
+  for (const r of (L.refs || []).filter(r => r.visible !== false).reverse()) if (pointInPoly(q[0], q[1], refPoly(r))) return { id: r.id };
+  if (inStudio()) for (const pt of L.partitions || []) if (distToSeg(q[0], q[1], pt.a, pt.b) < Math.max(0.6, 7 / view.sc)) return { id: pt.id };
   const ceils = L.ceilings.filter(c => c.visible !== false).slice().reverse();
   for (const c of ceils) if (pointInPoly(q[0], q[1], ceilGeom(c).poly)) return { id: c.id };
   return null;
@@ -919,7 +1012,7 @@ planCv.addEventListener("pointermove", e => {
     it.x = snapV(drag.x0 + q[0] - drag.q0[0], e.shiftKey); it.z = snapV(drag.z0 + q[1] - drag.q0[1], e.shiftKey);
     drag.moved = true;
   } else if (drag.kind === "turn") {
-    let a = deg(Math.atan2(q[1] - it.z, q[0] - it.x)) + (isWall(it) ? -90 : 90);
+    let a = deg(Math.atan2(q[1] - it.z, q[0] - it.x)) + handleTurn(it);
     a = e.shiftKey ? Math.round(a) : Math.round(a / 15) * 15;
     it.rotationDeg = normDeg(a); drag.moved = true;
   }
@@ -947,7 +1040,7 @@ function normDeg(a) { a = ((a + 180) % 360 + 360) % 360 - 180; return Math.round
 // ======================================================================
 //  3D (Three.js): the room, the LED, and a walk camera
 // ======================================================================
-let scene, camera, renderer, raycaster, itemsGroup, dirty3D = true, activeView = "plan";
+let scene, camera, renderer, raycaster, itemsGroup, studioGroup, openGroup, refsGroup, dirty3D = true, activeView = "plan";
 const nav = { yaw: 0, pitch: 0 }, navKeys = {};
 function init3D() {
   if (typeof THREE === "undefined") { $("#threeWrap").insertAdjacentHTML("beforeend", '<p class="empty" style="padding:40px">The volume refuses to rise: Three.js failed to load.</p>'); return; }
@@ -959,8 +1052,9 @@ function init3D() {
   scene.add(new THREE.HemisphereLight(0xe8e2f0, 0x2a2630, 0.85));
   const dl = new THREE.DirectionalLight(0xffffff, 0.6); dl.position.set(30, 60, 25); scene.add(dl);
   raycaster = new THREE.Raycaster();
-  buildStudio3D();
+  studioGroup = buildStudio3D(); openGroup = buildOpen3D();
   itemsGroup = new THREE.Group(); scene.add(itemsGroup);
+  refsGroup = buildRefs3D(); scene.add(refsGroup);
   setPov("floor");
   wire3D();
 }
@@ -1006,7 +1100,92 @@ function buildStudio3D() {
     new THREE.LineDashedMaterial({ color: 0xd8b54a, dashSize: 1.2, gapSize: 0.8 }));
   lane.computeLineDistances(); g.add(lane);
   g.traverse(o => { o.raycast = function () {}; });
-  scene.add(g);
+  scene.add(g); return g;
+}
+// Open space: a plain floor running out into fog, 1′ and 10′ grids, nothing else.
+const OPEN_BG = 0x16151a;
+function buildOpen3D() {
+  const g = new THREE.Group(), R = 400;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(R, R), new THREE.MeshStandardMaterial({ color: 0x1f1d24, roughness: 0.95 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -0.01; g.add(floor);
+  const fine = new THREE.GridHelper(160, 160, 0x2a2731, 0x2a2731); fine.position.y = 0.004; g.add(fine);
+  const major = new THREE.GridHelper(R, R / 10, 0x3d3846, 0x3d3846); major.position.y = 0.006; g.add(major);
+  [fine, major].forEach(m => { m.material.transparent = true; m.material.opacity = 0.6; });
+  g.traverse(o => { o.raycast = function () {}; });
+  g.visible = false; scene.add(g); return g;
+}
+function applySpace3D() {
+  const open = !inStudio();
+  studioGroup.visible = !open; openGroup.visible = open;
+  scene.background.setHex(open ? OPEN_BG : 0x0d0c10);
+  scene.fog = open ? new THREE.Fog(OPEN_BG, 90, 260) : null;
+}
+
+// ---- Scale reference in 3D: the car and the person -----------------------------------------------
+// The models come from Mock & Roll (assets/ref, packed into models.js so they load from a double-clicked
+// file). Each sits in a holder that takes the piece's x / z / turn; a plain box stands in until it loads.
+const refObj = {};
+const refMat = { stand: null, ring: null };
+function b64ToBuf(b64) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
+const GLASS_RE = /glass|window|windscreen|windshield/i;
+function fixRefMaterials(root) {
+  root.traverse(n => {
+    if (!n.isMesh) return;
+    (Array.isArray(n.material) ? n.material : [n.material]).forEach(mt => {
+      if (!mt) return;
+      ["map", "emissiveMap"].forEach(k => { if (mt[k]) { mt[k].encoding = THREE.LinearEncoding; mt[k].needsUpdate = true; } });
+      if (mt.color) mt.color.convertLinearToSRGB();
+      if (mt.emissive) mt.emissive.convertLinearToSRGB();
+      if (GLASS_RE.test(mt.name || "") || GLASS_RE.test(n.name || "")) {
+        mt.map = null; if (mt.color) mt.color.setHex(0x1b2328);
+        mt.transparent = true; mt.opacity = 0.35; mt.depthWrite = false; mt.side = THREE.DoubleSide;
+      } else { mt.transparent = false; mt.depthWrite = true; }
+      mt.needsUpdate = true;
+    });
+  });
+}
+function buildRefs3D() {
+  const g = new THREE.Group();
+  refMat.stand = new THREE.MeshStandardMaterial({ color: 0x77727f, roughness: 0.8 });
+  refMat.ring = new THREE.MeshBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+  [["car", [REF.car.lengthFt, REF.car.heightFt * 0.8, REF.car.bodyWidthFt]], ["person", [REF.person.widthFt / 6, 1, REF.person.depthFt / 6]]].forEach(([id, sz]) => {
+    const holder = new THREE.Group(), body = new THREE.Group();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(sz[0], sz[1], sz[2]), refMat.stand); box.position.y = sz[1] / 2; body.add(box);
+    // Selection: a flat ring round the footprint (the person's is scaled with them).
+    const r = id === "car" ? REF.car.lengthFt / 2 + 0.8 : 0.18;
+    const ring = new THREE.Mesh(new THREE.RingGeometry(r - (id === "car" ? 0.25 : 0.015), r, 48), refMat.ring);
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; ring.visible = false; ring.raycast = function () {};
+    holder.add(body, ring); holder.userData = { body, ring }; holder.visible = false;
+    refObj[id] = holder; g.add(holder);
+  });
+  const src = window.GRIM_REF_MODELS;
+  if (!THREE.GLTFLoader || !src) return g;
+  const loader = new THREE.GLTFLoader();
+  Object.keys(refObj).forEach(id => {
+    if (!src[id]) return;
+    loader.parse(b64ToBuf(src[id]), "", gl => {
+      const m = gl.scene; fixRefMaterials(m);
+      // Models are in metres, Y up. The car keeps its true size; the person is fitted to 1 unit tall and the
+      // holder scales them to the height asked for (6′ by default).
+      const b = new THREE.Box3().setFromObject(m), sz = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
+      const k = id === "car" ? REF.car.lengthFt / sz.x : 1 / sz.y;
+      m.scale.setScalar(k); m.position.set(-c.x * k, -b.min.y * k, -c.z * k);
+      const body = refObj[id].userData.body;
+      body.children.slice().forEach(ch => { body.remove(ch); if (ch.geometry) ch.geometry.dispose(); });
+      body.add(m); dirty3D = true;
+    }, err => console.warn("Grim Repositioner: the " + id + " model failed to load, keeping the box. " + (err && err.message || err)));
+  });
+  return g;
+}
+function updateRefs3D() {
+  Object.keys(refObj).forEach(id => {
+    const h = refObj[id], r = (L.refs || []).find(x => x.id === id);
+    h.visible = !!r && r.visible !== false; if (!h.visible) return;
+    h.position.set(r.x, 0, r.z); h.rotation.y = -rad(r.rotationDeg || 0);
+    if (id === "person") h.scale.setScalar(Math.max(0.5, +r.heightFt || REF.person.heightFt));
+    h.userData.ring.visible = r.id === selId;
+    h.traverse(n => { if (n.isMesh) n.userData.itemId = id; });
+  });
 }
 const M3 = typeof THREE === "undefined" ? {} : {
   led: new THREE.MeshStandardMaterial({ color: 0x0f1a17, emissive: 0x0b2a22, roughness: 0.55, metalness: 0.1, side: THREE.DoubleSide }),
@@ -1026,7 +1205,8 @@ function rebuild3D() {
   while (itemsGroup.children.length) { const c = itemsGroup.children.pop(); disposeTree(c); }
   L.walls.forEach(w => { if (w.visible !== false) itemsGroup.add(wall3D(w, w.id === selId)); });
   L.ceilings.forEach(c => { if (c.visible !== false) itemsGroup.add(ceil3D(c, c.id === selId)); });
-  (L.partitions || []).forEach(p => { if (!p.removed) itemsGroup.add(part3D(p, p.id === selId)); });
+  if (inStudio()) (L.partitions || []).forEach(p => { if (!p.removed) itemsGroup.add(part3D(p, p.id === selId)); });
+  applySpace3D(); updateRefs3D();
 }
 function part3D(p, sel) {
   const len = partLen(p), m = new THREE.Mesh(new THREE.BoxGeometry(len, p.heightFt, 0.4), sel ? M3.partSel : M3.part);
@@ -1113,7 +1293,7 @@ function wire3D() {
     if (look && Math.hypot(e.clientX - look.sx, e.clientY - look.sy) < 4) {      // a click, not a look: pick
       const r = el.getBoundingClientRect(), m = new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
       raycaster.setFromCamera(m, camera);
-      const hit = raycaster.intersectObjects(itemsGroup.children, true).find(h => h.object.userData.itemId);
+      const hit = raycaster.intersectObjects(itemsGroup.children.concat(refsGroup.children.filter(h => h.visible)), true).find(h => h.object.userData.itemId);
       select(hit ? hit.object.userData.itemId : null);
     }
     look = null;
@@ -1179,7 +1359,7 @@ function segBtns(act, key, opts, cur, label) {
   return '<div class="seg sm full" role="group" aria-label="' + label + '">' + opts.map(o => '<button type="button" data-act="' + act + '" data-' + key + '="' + o[0] + '" class="' + (cur === o[0] ? "active" : "") + '" aria-pressed="' + (cur === o[0]) + '">' + o[1] + '</button>').join("") + '</div>';
 }
 function omenItems(list, global) {
-  if (!list.length) return global ? '<li><div class="omen clear">' + ICON.check + '<span>Everything fits the room.</span></div></li>' : '';
+  if (!list.length) return global ? '<li><div class="omen clear">' + ICON.check + '<span>' + (inStudio() ? 'Everything fits the room.' : 'No clashes between pieces.') + '</span></div></li>' : '';
   return list.map(o => {
     const body = (o.lvl === "bad" ? ICON.skull : ICON.warn) + '<span>' + escapeHtml(o.text) + '</span>';
     return '<li>' + (global && o.id ? '<button type="button" class="omen ' + o.lvl + '" data-omen="' + o.id + '" title="Select it">' + body + '</button>' : '<div class="omen ' + o.lvl + '">' + body + '</div>') + '</li>';
@@ -1198,7 +1378,7 @@ function renderSummary() {
   setHTML($("#omens"), omenItems(omenCache, true));
 }
 // ---- Zone 2: the piece list ----
-function pieceSub(it) { return isPart(it) ? (it.removed ? "removed" : fmtLen(partLen(it))) : isWall(it) ? wallShape(it).N + " × " + Math.round(it.panelsHigh) : Math.round(it.panelsWide) + " × " + Math.round(it.panelsLong); }
+function pieceSub(it) { return isRef(it) ? (it.ref === "car" ? fmtLen(REF.car.lengthFt) + " long" : fmtLen(+it.heightFt || 6) + " tall") : isPart(it) ? (it.removed ? "removed" : fmtLen(partLen(it))) : isWall(it) ? wallShape(it).N + " × " + Math.round(it.panelsHigh) : Math.round(it.panelsWide) + " × " + Math.round(it.panelsLong); }
 function renderList() {
   const row = (it, kind) => {
     const om = omenCache.filter(o => o.id === it.id), bad = om.some(o => o.lvl === "bad"), sel = it.id === selId, hid = it.visible === false;
@@ -1211,7 +1391,8 @@ function renderList() {
   setHTML($("#pieceList"),
     '<div class="grp" role="presentation">LED walls</div>' + (L.walls.length ? L.walls.map(w => row(w, w.deck && w.deck.on ? "mobile" : "wall")).join("") : '<p class="empty">No walls. Bleak, even by our standards.</p>') +
     '<div class="grp" role="presentation">Ceilings</div>' + (L.ceilings.length ? L.ceilings.map(c => row(c, "ceil")).join("") : '<p class="empty">No ceilings. Open to the heavens.</p>') +
-    ((L.partitions || []).length ? '<div class="grp" role="presentation">Building walls</div>' + L.partitions.map(p => row(p, "part")).join("") : ''));
+    '<div class="grp" role="presentation">Scale reference</div>' + (L.refs || []).map(r => row(r, "ref")).join("") +
+    (inStudio() && (L.partitions || []).length ? '<div class="grp" role="presentation">Building walls</div>' + L.partitions.map(p => row(p, "part")).join("") : ''));
 }
 // ---- Zone 3: the inspector ----
 function wallSummary(w, sh) { return (sh.N * Math.round(w.panelsHigh)) + " panels · " + fmtLen(sh.arcLen) + " of face · " + (w.deck && w.deck.on ? "on a deck" : "floor-standing"); }
@@ -1283,14 +1464,27 @@ function partInspector(p) {
     '<dl class="stats"><dt>Length</dt><dd>' + fmtLen(partLen(p)) + '</dd><dt>Height</dt><dd>' + fmtLen(p.heightFt) + '</dd></dl></section>' +
     '<footer class="insFoot"><span></span>' + (p.removed ? '<button type="button" class="primary" data-act="restore">Put it back</button>' : '<button type="button" class="danger" data-act="del">Remove wall</button>') + '</footer>';
 }
+function refSummary(r) { return r.ref === "car" ? "For scale · " + fmtLen(REF.car.lengthFt) + " long, an average car" : "For scale · " + fmtLen(+r.heightFt || 6) + " tall"; }
+function refInspector(r) {
+  const id = r.id, car = r.ref === "car";
+  return insHead(r, refSummary(r)) +
+    (car ? '' : '<section class="blk"><h3>Height</h3><div class="fields">' + field("Standing height", inp(id, "heightFt", "len", lenInputVal(+r.heightFt || 6), "Standing height")) + '</div></section>') +
+    '<section class="blk"><h3>Position</h3><div class="fields three">' + field("X · east–west", inp(id, "x", "len", lenInputVal(r.x), "X position")) + field("Z · south–north", inp(id, "z", "len", lenInputVal(r.z), "Z position")) +
+      field("Turn", stepper(id, "rotationDeg", "deg", normDeg(r.rotationDeg || 0), "Turn in degrees")) + '</div>' +
+      '<p class="help">' + (car ? "X and Z place the middle of the car; the red handle is past its nose." : "X and Z place where they stand; the red handle is the way they face.") + ' Not LED: no panels and no clash checks.</p></section>' +
+    (car ? '<section class="blk"><h3>Measurements</h3><dl class="stats"><dt>Length</dt><dd>' + fmtLen(REF.car.lengthFt) + '</dd><dt>Width with mirrors</dt><dd>' + fmtLen(REF.car.widthFt) + '</dd><dt>Height</dt><dd>' + fmtLen(REF.car.heightFt) + '</dd></dl></section>' : '') +
+    '<footer class="insFoot"><span></span><button type="button" data-act="vis">' + (r.visible === false ? "Show" : "Hide") + '</button></footer>';
+}
 function renderInspector() {
   const it = selId && findItem(selId), el = $("#inspector");
   el._html = null;
   el.innerHTML = !it ? '<div class="insEmpty"><img src="brand/reaper.svg" alt="" width="40" height="40"><h3>Nothing selected</h3><p>Pick a wall or ceiling from the list, or click one on the plan, to edit it here.</p>' +
       '<ul class="keys"><li><kbd>Drag</kbd>move it on the plan</li><li><kbd>[</kbd><kbd>]</kbd>turn 15°</li><li><kbd>Arrows</kbd>nudge</li><li><kbd>Shift</kbd>while dragging: no snap</li></ul></div>'
-    : isPart(it) ? partInspector(it) : isWall(it) ? wallInspector(it) : ceilInspector(it);
+    : isPart(it) ? partInspector(it) : isRef(it) ? refInspector(it) : isWall(it) ? wallInspector(it) : ceilInspector(it);
 }
+let shownSpace = null;
 function renderSide() {
+  syncSpace(); updateRefBtn();
   renderSummary(); renderList(); renderInspector();
   if (document.activeElement !== $("#layoutName")) $("#layoutName").value = L.name || "";
 }
@@ -1300,6 +1494,7 @@ function updateReadouts() {
   const it = selId && findItem(selId); if (!it) return;
   const set = (k, html) => setHTML(document.querySelector('#inspector [data-o="' + it.id + ':' + k + '"]'), html);
   if (isPart(it)) set("sum", partSummary(it));
+  else if (isRef(it)) set("sum", refSummary(it));
   else if (isWall(it)) { const sh = wallShape(it); set("sum", wallSummary(it, sh)); set("stats", wallStatsHTML(it, sh)); it.segments.forEach((sg, i) => set("arc" + i, fmtDeg(Math.round(sg.panels) * (+sg.curveDeg || 0)))); }
   else { set("sum", ceilSummary(it)); set("stats", ceilStatsHTML(it, ceilDims(it))); }
   set("omens", omenItems(omenCache.filter(o => o.id === it.id), false));
@@ -1380,7 +1575,7 @@ function wireSide() {
     const it = row ? findItem(row.dataset.item) : selId && findItem(selId); if (!it) return;
     const act = a.dataset.act;
     if (act === "step") { const el = a.parentNode.querySelector("input"); stepField(el, +a.dataset.d, e.shiftKey); return; }
-    if (act === "vis") { it.visible = it.visible === false; changed(); commit(); renderList(); return; }
+    if (act === "vis") { it.visible = it.visible === false; changed(); commit(); renderList(); if (!row) renderInspector(); updateRefBtn(); return; }
     if (act === "del") return removeItem(it.id);
     if (act === "restore") { it.removed = false; done(true); toast(it.name + " is back."); return; }
     if (act === "dup") return duplicate(it.id);
@@ -1452,6 +1647,7 @@ function bboxCentre(w) {
 }
 // Slide a wall back inside the room (clear of the fire lane where it can be) if it fits that way at all.
 function nudgeIntoRoom(w) {
+  if (!inStudio()) return;
   const S = STUDIO, g = wallGeom(w), pts = g.body.concat(g.deck || []); if (!pts.length) return;
   const xs = pts.map(q => q[0]), zs = pts.map(q => q[1]);
   const fit = (lo, hi, a, b) => { for (const m of [S.fireLaneFt, 0.5]) { const L0 = a + m, L1 = b - m; if (hi - lo <= L1 - L0) return lo < L0 ? L0 - lo : hi > L1 ? L1 - hi : 0; } return 0; };
@@ -1476,7 +1672,7 @@ function addItem(kind) {
   selId = it.id; changed(); commit(); renderSide(); scrollCardIntoView();
 }
 function duplicate(id) {
-  const it = findItem(id); if (!it || isPart(it)) return;
+  const it = findItem(id); if (!it || isPart(it) || isRef(it)) return;
   const cp = deepClone(it); cp.id = newId(isWall(it) ? "w" : "c"); cp.name = it.name + " copy";
   const n = [-Math.sin(rad(it.rotationDeg || 0)), Math.cos(rad(it.rotationDeg || 0))];
   cp.x = round2(it.x + n[0] * 6); cp.z = round2(it.z + n[1] * 6);
@@ -1485,6 +1681,7 @@ function duplicate(id) {
 }
 function removeItem(id) {
   const it = findItem(id); if (!it) return;
+  if (isRef(it)) { if (it.visible !== false) { it.visible = false; changed(); commit(); renderSide(); } return; }   // hidden, never deleted
   if (isPart(it)) {                                           // building walls are knocked down, not deleted: they can come back
     if (it.removed) return;
     it.removed = true; changed(); commit(); renderSide();
@@ -1539,6 +1736,13 @@ function migrate(d) {
   d.ceilings.forEach(c => { ["x", "z", "rotationDeg", "tiltDeg", "heightFt"].forEach(k => { c[k] = +c[k] || 0; }); ["panelsWide", "panelsLong"].forEach(k => { c[k] = Math.max(1, Math.round(+c[k] || 1)); }); if (!c.id) c.id = "c" + Math.random().toString(36).slice(2, 7); });
   if (!Array.isArray(d.partitions)) d.partitions = defaultPartitions();   // layouts from before building walls were removable
   d.partitions.forEach(p => { p.kind = "partition"; p.removed = !!p.removed; p.heightFt = +p.heightFt || STUDIO.partition.heightFt; });
+  d.space = d.space === "open" ? "open" : "studio";
+  const refs = Array.isArray(d.refs) ? d.refs : [];                     // layouts from before the scale reference
+  d.refs = defaultRefs(false).map(def => {
+    const r = Object.assign(def, refs.find(x => x && x.id === def.id) || {}, { kind: "ref", ref: def.ref });
+    ["x", "z", "rotationDeg"].forEach(k => { r[k] = +r[k] || 0; }); if (r.ref === "person") r.heightFt = +r.heightFt || REF.person.heightFt;
+    return r;
+  });
   d.name = d.name || "Untitled layout"; d.app = "grim-repositioner"; d.version = 1;
   return d;
 }
@@ -1590,6 +1794,7 @@ function wireFiles() {
       a.href = URL.createObjectURL(blob); a.download = (L.name || "layout").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").toLowerCase() + ".grim.json";
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     } else if (f.dataset.file === "import") $("#importFile").click();
+    else if (f.dataset.file === "newOpen") loadLayout(openSpaceLayout(), "A pop-up in open space. Undo to go back.");
     else if (f.dataset.file === "new") loadLayout(defaultLayout(), "Back to the stage as it stands. Undo if you didn't mean it.");
   });
   $("#importFile").addEventListener("change", e => {
@@ -1603,7 +1808,7 @@ function wireFiles() {
 function printPlan() {
   const W = 2400, H = 1500, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
   const v = fitView({}, W, H, 60);
-  drawPlan(cv.getContext("2d"), W, H, v, THEMES.paper, { print: true, k: 2, ghost: showGhost });
+  drawPlan(cv.getContext("2d"), W, H, v, THEMES.paper, { print: true, k: 2, ghost: showGhost && inStudio() });
   const t = totals(), om = computeOmens(), date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   let rows = "";
   L.walls.filter(w => w.visible !== false).forEach(w => {
@@ -1615,12 +1820,14 @@ function printPlan() {
     const d = ceilDims(c);
     rows += '<tr><td><b>' + escapeHtml(c.name) + '</b></td><td>ceiling' + (c.tiltDeg ? ", tilt " + fmtDeg(c.tiltDeg) : "") + '</td><td>' + Math.round(c.panelsWide) + " × " + Math.round(c.panelsLong) + '</td><td>' + panelsOfCeil(c) + '</td><td>' + fmtLen(d.W) + " × " + fmtLen(d.L) + " at " + fmtLen(c.heightFt) + '</td></tr>';
   });
-  $("#print").innerHTML = '<header><h1>The Grim Repositioner</h1><div><b>' + escapeHtml(L.name || "") + '</b> · Lumostage · ' + date + ' · panels ' + panelFt().toFixed(3) + '′ (50 cm)</div></header>' +
+  $("#print").innerHTML = '<header><h1>The Grim Repositioner</h1><div><b>' + escapeHtml(L.name || "") + '</b> · ' + (inStudio() ? "Lumostage studio" : "open space") + ' · ' + date + ' · panels ' + panelFt().toFixed(3) + '′ (50 cm)</div></header>' +
     '<img alt="Stage plan" src="' + cv.toDataURL("image/png") + '">' +
     '<div class="sched"><table><thead><tr><th>Piece</th><th>Sections</th><th>Wide × high</th><th>Panels</th><th>Size</th></tr></thead><tbody>' + rows +
     '<tr><td colspan="3"><b>Total</b></td><td><b>' + t.all + '</b></td><td>' + t.walls + ' wall + ' + t.ceilings + ' ceiling</td></tr></tbody></table>' +
-    '<div>' + ((L.partitions || []).some(p => p.removed) ? '<p><b>Building walls removed:</b> ' + L.partitions.filter(p => p.removed).map(p => escapeHtml(p.name) + " (" + fmtLen(partLen(p)) + ")").join(", ") + '</p>' : '') + '<b>Omens</b>' + (om.length ? '<ul>' + om.map(o => '<li class="warn">' + escapeHtml(o.text) + '</li>').join("") + '</ul>' : '<p>None. Everything fits the room.</p>') +
-    '<p style="color:#666;font-size:8pt">Plan: volume at top, north down. Dashed yellow = 3.5′ fire lane. Dashed violet = ceilings' + (showGhost ? "; faint dashes = the stage as it stands" : "") + '.</p></div></div>';
+    '<div>' + (inStudio() && (L.partitions || []).some(p => p.removed) ? '<p><b>Building walls removed:</b> ' + L.partitions.filter(p => p.removed).map(p => escapeHtml(p.name) + " (" + fmtLen(partLen(p)) + ")").join(", ") + '</p>' : '') + '<b>Omens</b>' + (om.length ? '<ul>' + om.map(o => '<li class="warn">' + escapeHtml(o.text) + '</li>').join("") + '</ul>' : '<p>None. Everything fits the room.</p>') +
+    '<p style="color:#666;font-size:8pt">' + (inStudio() ? 'Plan: volume at top, north down. Dashed yellow = 3.5′ fire lane. Dashed violet = ceilings' + (showGhost ? "; faint dashes = the stage as it stands" : "")
+      : 'Plan: open space, grid at 1′ / 5′ / 10′. Dashed violet = ceilings') +
+      ((L.refs || []).some(r => r.visible !== false) ? '. For scale: ' + L.refs.filter(r => r.visible !== false).map(r => r.ref === "car" ? "a " + fmtLen(REF.car.lengthFt) + " car" : "a " + fmtLen(+r.heightFt || 6) + " person").join(" and ") : '') + '.</p></div></div>';
   setTimeout(() => window.print(), 60);
 }
 
@@ -1632,6 +1839,31 @@ function setView(v) {
   document.querySelectorAll("#viewSeg button").forEach(b => b.classList.toggle("active", b.dataset.v === v));
   if (v === "plan") activeView = "plan"; else if (v === "3d") activeView = "3d";
   requestAnimationFrame(() => { resizePlan(); resize3D(); });
+}
+// Studio or open space belongs to the layout (so undo, saves and files carry it). When it changes, by the
+// toggle, undo or opening a layout, the plan refits and the top bar follows.
+function setSpace(sp) {
+  if ((L.space || "studio") === sp) return;
+  L.space = sp; if (selId && isPart(findItem(selId)) && sp === "open") selId = null;
+  changed(); commit(); renderSide();
+  toast(sp === "open" ? "Open space: no room, no room checks. The layout stays where it was." : "Back in the Lumostage studio.");
+}
+function syncSpace() {
+  const sp = inStudio() ? "studio" : "open";
+  if (sp === shownSpace) return;
+  shownSpace = sp; document.body.dataset.space = sp;
+  document.querySelectorAll("#spaceSeg button").forEach(b => { b.classList.toggle("active", b.dataset.s === sp); b.setAttribute("aria-pressed", b.dataset.s === sp); });
+  $("#ghostBtn").disabled = sp === "open";
+  $("#planTag").textContent = sp === "open" ? "Plan · open space" : "Plan · volume at top";
+  $("#fitBtn").title = sp === "open" ? "Fit the layout in view (F)" : "Fit the studio in view (F)";
+  view.userMoved = false; resizePlan(); dirty3D = true;
+}
+function updateRefBtn() { $("#refBtn").classList.toggle("on", (L.refs || []).some(r => r.visible !== false)); }
+// One switch for both: if either shows, hide both; otherwise show both.
+function toggleRefs() {
+  const on = !(L.refs || []).some(r => r.visible !== false);
+  (L.refs || []).forEach(r => { r.visible = on; });
+  changed(); commit(); renderSide();
 }
 function setGhost(on) { showGhost = on; store.set("grim.ghost", on ? "1" : "0"); $("#ghostBtn").classList.toggle("on", on); planDirty = true; }
 function setMeasure(on) { measuring = on; if (!on) measure = null; $("#measureBtn").classList.toggle("on", on); $("#planWrap").classList.toggle("measuring", on); planDirty = true; }
@@ -1646,6 +1878,8 @@ function setUnits(u) {
 function wireTop() {
   document.querySelectorAll("#viewSeg button").forEach(b => b.addEventListener("click", () => setView(b.dataset.v)));
   $("#ghostBtn").addEventListener("click", () => setGhost(!showGhost));
+  document.querySelectorAll("#spaceSeg button").forEach(b => b.addEventListener("click", () => setSpace(b.dataset.s)));
+  $("#refBtn").addEventListener("click", toggleRefs);
   $("#measureBtn").addEventListener("click", () => setMeasure(!measuring));
   $("#unitBtn").addEventListener("click", () => setUnits(displayUnit === "m" ? "ft" : "m"));
   $("#snapSel").addEventListener("change", e => { snapFt = parseFloat(e.target.value); });
@@ -1669,7 +1903,8 @@ document.addEventListener("keydown", e => {
   if (e.key === "1") return setView("plan");
   if (e.key === "2") return setView("split");
   if (e.key === "3") return setView("3d");
-  if (e.key.toLowerCase() === "g") return setGhost(!showGhost);
+  if (e.key.toLowerCase() === "g") return inStudio() && setGhost(!showGhost);
+  if (e.key.toLowerCase() === "r") return toggleRefs();
   if (e.key.toLowerCase() === "m") return setMeasure(!measuring);
   if (e.key.toLowerCase() === "f") { view.userMoved = false; resizePlan(); return; }
   const it = selId && findItem(selId); if (!it) return;

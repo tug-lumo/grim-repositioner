@@ -2,7 +2,7 @@
 
     python serve.py            -> http://127.0.0.1:8139/
 
-Serves only the app (index.html, vendor/, brand/), never docs or tooling. The app also runs
+Serves only the app (index.html, vendor/, brand/, assets/ref/models.js), never docs or tooling. The app also runs
 straight from a double-clicked index.html; the server is just a convenience.
 """
 import os
@@ -17,7 +17,7 @@ if sys.stdout is None:
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PORT = 8139
-ALLOWED = re.compile(r"^/(?:index\.html|vendor/[\w.\-/]+|brand/[\w.\-/]+)?$")
+ALLOWED = re.compile(r"^/(?:index\.html|vendor/[\w.\-/]+|brand/[\w.\-/]+|assets/ref/models\.js)?$")
 
 
 class Handler(SimpleHTTPRequestHandler):

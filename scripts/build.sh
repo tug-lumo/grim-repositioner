@@ -5,6 +5,7 @@ rm -rf dist
 mkdir -p dist
 cp index.html dist/
 cp -r vendor brand dist/
+mkdir -p dist/assets/ref && cp assets/ref/models.js dist/assets/ref/
 cat > dist/_headers <<'H'
 /vendor/*
   Cache-Control: public, max-age=31536000, immutable
