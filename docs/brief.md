@@ -77,6 +77,16 @@ so they add no panels and no clash checks.
     Measurements, then Duplicate / Delete.
   - Steppers and ↑ / ↓ adjust numbers (Shift for bigger or finer steps). A run of quick changes undoes as one step.
   - Lengths show and type as feet-and-inches (`19' 2.75"`) or metres.
+- **Stage configs:** one project (the name in the top bar) holds several saved stages to jump between, e.g. "As rigged",
+  "Hockey stick", "Client pop-up". Each config has a name, an optional description, and a full stage: space, walls, ceilings,
+  building walls and the car + person. They're stored in the layout as `configs` (plus `configId`, the one on screen), so
+  autosave, browser saves, Export / Import JSON and undo all carry them.
+  - The **Config** dropdown beside the project name lists them (name, description, date). Click one to jump; a dot on the
+    button means the stage has changed since that config was saved.
+  - **Save changes to "X"** (Ctrl+Shift+S), **Save as a new config…** (name + description), **Rename or describe…**, and × to delete
+    (the stage on screen stays).
+  - Jumping with unsaved changes doesn't ask first: it's an ordinary undo step, and the toast offers Undo.
+  - Print puts the config's name and description under the project name.
 - **File menu:** Save (Ctrl+S, under the layout name), saved layouts, Export / Import JSON, and Start over.
 - **Panel count:** wall + ceiling + total, checked against "panels owned" (stored per browser).
 - **Omens** (advisory clash checks; nothing is blocked):

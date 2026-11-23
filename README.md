@@ -12,4 +12,7 @@ to **Open space** (no studio, just the floor) and turn on **Car + person** (an a
 - Forked from Mock & Roll (the stage configurator). The studio floor plan is carried over unchanged;
   the camera, playback and content tools were left behind. One car and one person came back as scale references.
 
+One project can hold several **stage configs**: save the stage with a name and description from the **Config** dropdown next to the
+project name, then jump between them there (Ctrl+Shift+S saves changes to the one on screen). They travel with the project.
+
 Layouts autosave in the browser; use **Save in browser** for named versions and **Export JSON** to share one.

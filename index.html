@@ -42,13 +42,13 @@
   * { scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
   .num, input, .stats dd { font-variant-numeric: tabular-nums; }
 
-  button, select, input {
+  button, select, input, textarea {
     font: inherit; color: var(--bone); background: var(--crypt3); border: 1px solid var(--line);
     border-radius: 6px; padding: 5px 9px; transition: border-color .15s, background-color .15s, color .15s;
   }
   button { cursor: pointer; }
   button:hover { border-color: var(--line2); background: #2c2633; }
-  button:focus-visible, select:focus-visible, input:focus-visible { outline: none; box-shadow: var(--focus); }
+  button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: none; box-shadow: var(--focus); }
   button:disabled { opacity: .4; cursor: default; }
   button.primary { background: var(--blood); border-color: var(--blood); color: #fff; font-weight: 600; }
   button.primary:hover { background: var(--bloodHi); border-color: var(--bloodHi); }
@@ -222,6 +222,31 @@
   .libRow { display: flex; align-items: center; gap: 2px; }
   .libRow .mi { flex: 1; min-width: 0; }
   .libRow .mi span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Stage configs: one project, several saved stages to jump between */
+  #cfgBtn { display: inline-flex; align-items: center; gap: 6px; max-width: 260px; }
+  #cfgBtn .k { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+  #cfgName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--bone); font-weight: 550; }
+  #cfgName.none { color: var(--dim); font-weight: 400; font-style: italic; }
+  #cfgBtn .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--lane); flex-shrink: 0; }
+  #cfgBtn .dot[hidden] { display: none; }
+  #cfgBtn svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .menu.left { left: 0; right: auto; width: 330px; }
+  #cfgList { max-height: 300px; overflow-y: auto; }
+  .cfgRow { display: flex; align-items: center; gap: 2px; }
+  .cfgRow .mi { flex: 1; min-width: 0; align-items: flex-start; }
+  .cfgRow .mi.cur { background: var(--crypt3); }
+  .cfgTxt { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+  .cfgTxt b { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cfgTxt i { font-style: normal; font-size: 12px; color: var(--ash); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
+  .cfgRow .mi small { padding-top: 1px; }
+  .cfgForm { display: flex; flex-direction: column; gap: 8px; padding: 6px 6px 4px; }
+  .cfgForm[hidden] { display: none; }
+  .cfgForm h4 { margin: 2px 0 0; font-size: 12px; font-weight: 600; color: var(--ash); }
+  .cfgForm label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ash); }
+  .cfgForm label span { color: var(--dim); }
+  .cfgForm textarea { resize: vertical; min-height: 58px; line-height: 1.4; }
+  .cfgFBtns { display: flex; justify-content: flex-end; gap: 6px; }
+  #print .desc { margin: 0 0 4px; font-size: 9.5pt; color: #333; }
   .libEmpty { margin: 0; padding: 4px 10px 8px; font-size: 12px; color: var(--dim); line-height: 1.45; }
 
   /* ---------- Views ---------- */
@@ -248,7 +273,7 @@
 
   #print { display: none; }
   @media (max-width: 1100px) { :root { --side: 320px; } #top .tag { display: none; } }
-  @media (max-width: 820px) { #top h1 { font-size: 20px; } #layoutName { width: 120px; } }
+  @media (max-width: 820px) { #top h1 { font-size: 20px; } #layoutName { width: 120px; } #cfgBtn { max-width: 170px; } #cfgBtn .k { display: none; } }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
   @media print {
@@ -274,7 +299,24 @@
   <h1>The Grim <b>Re</b>positioner</h1>
   <span class="tag">Lumostage · stage reconfiguration</span>
   <div class="vr"></div>
-  <input id="layoutName" aria-label="Layout name" spellcheck="false">
+  <input id="layoutName" aria-label="Project name" title="Project name" spellcheck="false">
+  <div class="menuWrap" id="cfgWrap">
+    <button id="cfgBtn" aria-haspopup="true" aria-expanded="false" aria-controls="cfgMenu" title="Stage configs saved in this project (Ctrl+Shift+S saves)"><span class="k">Config</span><span id="cfgName"></span><span class="dot" id="cfgDot" title="Changed since it was saved" hidden></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div class="menu left" id="cfgMenu" role="menu" hidden>
+      <div class="mlabel">Stage configs in this project</div>
+      <div id="cfgList"></div>
+      <div class="msep"></div>
+      <button type="button" class="mi" role="menuitem" data-cfg="update" id="cfgUpdate"><span id="cfgUpdateLabel">Save changes</span><kbd>Ctrl ⇧ S</kbd></button>
+      <button type="button" class="mi" role="menuitem" data-cfg="new">Save as a new config…</button>
+      <button type="button" class="mi" role="menuitem" data-cfg="edit" id="cfgEdit">Rename or describe…</button>
+      <form class="cfgForm" id="cfgForm" hidden>
+        <h4 id="cfgFTitle">New stage config</h4>
+        <label>Name<input id="cfgFName" maxlength="60" required autocomplete="off" spellcheck="false"></label>
+        <label><span>Description (optional)</span><textarea id="cfgFDesc" rows="3" maxlength="400" placeholder="What's different about this one, who it's for…"></textarea></label>
+        <div class="cfgFBtns"><button type="button" data-cfg="cancel">Cancel</button><button type="submit" class="primary" id="cfgFSave">Save config</button></div>
+      </form>
+    </div>
+  </div>
   <div class="spacer"></div>
   <div class="seg" id="viewSeg" role="group" aria-label="View">
     <button data-v="plan" title="Plan only (1)">Plan</button>
@@ -1487,10 +1529,11 @@ function renderSide() {
   syncSpace(); updateRefBtn();
   renderSummary(); renderList(); renderInspector();
   if (document.activeElement !== $("#layoutName")) $("#layoutName").value = L.name || "";
+  renderConfigs();
 }
 // Live readouts without rebuilding the inspector (keeps focus while typing, stepping or dragging).
 function updateReadouts() {
-  renderSummary(); renderList();
+  renderSummary(); renderList(); renderConfigBtn();
   const it = selId && findItem(selId); if (!it) return;
   const set = (k, html) => setHTML(document.querySelector('#inspector [data-o="' + it.id + ':' + k + '"]'), html);
   if (isPart(it)) set("sum", partSummary(it));
@@ -1743,8 +1786,120 @@ function migrate(d) {
     ["x", "z", "rotationDeg"].forEach(k => { r[k] = +r[k] || 0; }); if (r.ref === "person") r.heightFt = +r.heightFt || REF.person.heightFt;
     return r;
   });
+  // Stage configs: saved stages inside this project (each its own space, walls, ceilings, building walls and refs).
+  d.configs = (Array.isArray(d.configs) ? d.configs : []).filter(c => c && validLayout(c.stage)).map(c => ({
+    id: String(c.id || "k" + Math.random().toString(36).slice(2, 7)), name: String(c.name || "").trim() || "Untitled config",
+    desc: String(c.desc || ""), savedAt: +c.savedAt || Date.now(), stage: stageOf(migrate(Object.assign({}, c.stage, { configs: [] })))
+  }));
+  if (!d.configs.some(c => c.id === d.configId)) d.configId = null;
   d.name = d.name || "Untitled layout"; d.app = "grim-repositioner"; d.version = 1;
   return d;
+}
+// ---- Stage configs: several stages saved in one project, to jump between ----
+// The project (L) holds `configs`; the stage on screen is L's own walls / ceilings / etc. Saving copies the stage
+// into a config, jumping copies a config back. Both are ordinary commits, so undo, autosave, browser saves and
+// Export JSON all carry the configs with the project.
+const STAGE_KEYS = ["space", "walls", "ceilings", "partitions", "refs"];
+function stageOf(d) { const o = {}; STAGE_KEYS.forEach(k => { o[k] = deepClone(d[k]); }); return o; }
+function activeConfig() { return (L.configs || []).find(c => c.id === L.configId) || null; }
+function configDirty(c) { return !!c && JSON.stringify(stageOf(L)) !== JSON.stringify(c.stage); }
+function newConfigId() { let n = 1; while ((L.configs || []).some(c => c.id === "k" + n)) n++; return "k" + n; }
+function saveConfig(asNew, name, desc) {
+  let c = activeConfig();
+  if (asNew || !c) {
+    c = { id: newConfigId(), name: (name || "").trim() || "Config " + ((L.configs || []).length + 1), desc: (desc || "").trim(), savedAt: Date.now(), stage: stageOf(L) };
+    L.configs = (L.configs || []).concat([c]); L.configId = c.id;
+    toast("Saved “" + c.name + "” as a stage config.");
+  } else {
+    c.stage = stageOf(L); c.savedAt = Date.now();
+    toast("Saved the changes to “" + c.name + "”.");
+  }
+  commit(); renderConfigs();
+}
+function editConfig(id, name, desc) {
+  const c = (L.configs || []).find(x => x.id === id); if (!c) return;
+  c.name = (name || "").trim() || c.name; c.desc = (desc || "").trim();
+  commit(); renderConfigs(); toast("Updated “" + c.name + "”.");
+}
+function jumpToConfig(id) {
+  const c = (L.configs || []).find(x => x.id === id); if (!c) return;
+  const prev = activeConfig(); if (prev && prev.id === id && !configDirty(prev)) return;
+  const here = JSON.stringify(stageOf(L)), unsaved = prev ? configDirty(prev) : !L.configs.some(k => JSON.stringify(k.stage) === here);
+  Object.assign(L, deepClone(c.stage)); L.configId = c.id;
+  if (selId && !findItem(selId)) selId = null;
+  changed(); commit(); renderSide();
+  const msg = prev && prev.id === id ? "Back to “" + c.name + "” as saved." : "Showing “" + c.name + "”.";
+  if (unsaved) toast(msg + " Unsaved changes are one undo away.", { label: "Undo", fn: () => stepHistory(-1) });
+  else toast(msg);
+}
+function deleteConfig(id) {
+  const c = (L.configs || []).find(x => x.id === id); if (!c) return;
+  L.configs = L.configs.filter(x => x !== c); if (L.configId === id) L.configId = null;
+  commit(); renderConfigs();
+  toast("“" + c.name + "” has been reaped. The stage on screen stays.", { label: "Undo", fn: () => stepHistory(-1) });
+}
+function renderConfigBtn() {
+  const c = activeConfig(), dirty = configDirty(c), nm = $("#cfgName");
+  nm.textContent = c ? c.name : (L.configs || []).length ? "Unsaved stage" : "No configs yet";
+  nm.classList.toggle("none", !c); $("#cfgDot").hidden = !dirty;
+  $("#cfgBtn").title = (c ? c.name + (c.desc ? "\n" + c.desc : "") + (dirty ? "\n(changed since saved)" : "") + "\n\n" : "") + "Stage configs saved in this project (Ctrl+Shift+S saves)";
+}
+function renderConfigs() {
+  renderConfigBtn();
+  const c = activeConfig(), dirty = configDirty(c), list = L.configs || [];
+  $("#cfgList").innerHTML = list.length ? list.map(k => '<div class="cfgRow"><button type="button" class="mi' + (k === c ? " cur" : "") + '" role="menuitem" data-cfgjump="' + escapeHtml(k.id) + '"><span class="cfgTxt"><b>' + escapeHtml(k.name) +
+      (k === c ? ' <em>· ' + (dirty ? "showing, edited" : "showing") + '</em>' : '') + '</b>' + (k.desc ? '<i>' + escapeHtml(k.desc) + '</i>' : '') + '</span><small>' +
+      new Date(k.savedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) + '</small></button>' +
+      '<button type="button" class="iconBtn" data-cfgdel="' + escapeHtml(k.id) + '" title="Delete “' + escapeHtml(k.name) + '”" aria-label="Delete ' + escapeHtml(k.name) + '">' + ICON.x + '</button></div>').join("")
+    : '<p class="libEmpty">None yet. Save the stage on screen as a config, change it, save another, then jump between them here.</p>';
+  $("#cfgUpdate").hidden = !c; $("#cfgEdit").hidden = !c;
+  if (c) { $("#cfgUpdateLabel").textContent = "Save changes to “" + c.name + "”"; $("#cfgUpdate").disabled = !dirty; }
+}
+let cfgFormMode = null;
+function openConfigForm(mode) {
+  const c = activeConfig(); if (mode === "edit" && !c) return;
+  cfgFormMode = mode; $("#cfgForm").hidden = false;
+  $("#cfgFTitle").textContent = mode === "edit" ? "Rename or describe “" + c.name + "”" : "Save the stage on screen as a new config";
+  $("#cfgFSave").textContent = mode === "edit" ? "Save details" : "Save config";
+  $("#cfgFName").value = mode === "edit" ? c.name : "Config " + ((L.configs || []).length + 1);
+  $("#cfgFDesc").value = mode === "edit" ? c.desc : "";
+  $("#cfgFName").focus(); $("#cfgFName").select();
+}
+function openConfigMenu(open, formMode) {
+  const m = $("#cfgMenu"), b = $("#cfgBtn");
+  if (open) {
+    openFileMenu(false); renderConfigs(); $("#cfgForm").hidden = true; cfgFormMode = null; m.hidden = false; b.setAttribute("aria-expanded", "true");
+    if (formMode) openConfigForm(formMode); else { const f = m.querySelector(".mi.cur") || m.querySelector(".mi:not([hidden])"); if (f) f.focus(); }
+  } else if (!m.hidden) { m.hidden = true; b.setAttribute("aria-expanded", "false"); }
+}
+// Ctrl+Shift+S: save the changes to the config on screen, or name a new one if there isn't one.
+function quickSaveConfig() { if (activeConfig()) saveConfig(false); else openConfigMenu(true, "new"); }
+function wireConfigs() {
+  $("#cfgBtn").addEventListener("click", () => openConfigMenu($("#cfgMenu").hidden));
+  document.addEventListener("pointerdown", e => { if (!e.target.closest("#cfgWrap")) openConfigMenu(false); });
+  $("#cfgMenu").addEventListener("keydown", e => {
+    if (e.key === "Escape") { openConfigMenu(false); $("#cfgBtn").focus(); e.stopPropagation(); return; }
+    if (typing(e.target)) return;
+    const items = [].slice.call($("#cfgMenu").querySelectorAll(".mi:not([hidden]):not(:disabled)")), i = items.indexOf(document.activeElement);
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length]; if (n) n.focus(); }
+  });
+  $("#cfgMenu").addEventListener("click", e => {
+    const j = e.target.closest("[data-cfgjump]"); if (j) { openConfigMenu(false); jumpToConfig(j.dataset.cfgjump); return; }
+    const d = e.target.closest("[data-cfgdel]"); if (d) { deleteConfig(d.dataset.cfgdel); return; }
+    const b = e.target.closest("[data-cfg]"); if (!b) return;
+    const act = b.dataset.cfg;
+    if (act === "update") { openConfigMenu(false); saveConfig(false); }
+    else if (act === "new" || act === "edit") openConfigForm(act);
+    else if (act === "cancel") { $("#cfgForm").hidden = true; cfgFormMode = null; }
+  });
+  $("#cfgForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const name = $("#cfgFName").value, desc = $("#cfgFDesc").value, mode = cfgFormMode, c = activeConfig();
+    openConfigMenu(false);
+    if (mode === "edit" && c) editConfig(c.id, name, desc); else saveConfig(true, name, desc);
+  });
+  // Ctrl+Enter saves from the description box (plain Enter makes a new line).
+  $("#cfgFDesc").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $("#cfgForm").requestSubmit(); } });
 }
 function loadLayout(d, msg) {
   L = migrate(deepClone(d)); selId = null; changed(); commit(); renderSide(); if (msg) toast(msg);
@@ -1767,7 +1922,7 @@ function saveLayout() {
 }
 function openFileMenu(open) {
   const m = $("#fileMenu"), b = $("#fileBtn");
-  if (open) { renderFileMenu(); m.hidden = false; b.setAttribute("aria-expanded", "true"); const f = m.querySelector(".mi"); if (f) f.focus(); }
+  if (open) { openConfigMenu(false); renderFileMenu(); m.hidden = false; b.setAttribute("aria-expanded", "true"); const f = m.querySelector(".mi"); if (f) f.focus(); }
   else if (!m.hidden) { m.hidden = true; b.setAttribute("aria-expanded", "false"); }
 }
 function wireFiles() {
@@ -1809,7 +1964,7 @@ function printPlan() {
   const W = 2400, H = 1500, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
   const v = fitView({}, W, H, 60);
   drawPlan(cv.getContext("2d"), W, H, v, THEMES.paper, { print: true, k: 2, ghost: showGhost && inStudio() });
-  const t = totals(), om = computeOmens(), date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  const t = totals(), om = computeOmens(), cfg = activeConfig(), date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   let rows = "";
   L.walls.filter(w => w.visible !== false).forEach(w => {
     const sh = wallShape(w);
@@ -1820,8 +1975,8 @@ function printPlan() {
     const d = ceilDims(c);
     rows += '<tr><td><b>' + escapeHtml(c.name) + '</b></td><td>ceiling' + (c.tiltDeg ? ", tilt " + fmtDeg(c.tiltDeg) : "") + '</td><td>' + Math.round(c.panelsWide) + " × " + Math.round(c.panelsLong) + '</td><td>' + panelsOfCeil(c) + '</td><td>' + fmtLen(d.W) + " × " + fmtLen(d.L) + " at " + fmtLen(c.heightFt) + '</td></tr>';
   });
-  $("#print").innerHTML = '<header><h1>The Grim Repositioner</h1><div><b>' + escapeHtml(L.name || "") + '</b> · ' + (inStudio() ? "Lumostage studio" : "open space") + ' · ' + date + ' · panels ' + panelFt().toFixed(3) + '′ (50 cm)</div></header>' +
-    '<img alt="Stage plan" src="' + cv.toDataURL("image/png") + '">' +
+  $("#print").innerHTML = '<header><h1>The Grim Repositioner</h1><div><b>' + escapeHtml(L.name || "") + '</b>' + (cfg ? ' · ' + escapeHtml(cfg.name) + (configDirty(cfg) ? " (edited)" : "") : '') + ' · ' + (inStudio() ? "Lumostage studio" : "open space") + ' · ' + date + ' · panels ' + panelFt().toFixed(3) + '′ (50 cm)</div></header>' +
+    (cfg && cfg.desc ? '<p class="desc">' + escapeHtml(cfg.desc) + '</p>' : '') + '<img alt="Stage plan" src="' + cv.toDataURL("image/png") + '">' +
     '<div class="sched"><table><thead><tr><th>Piece</th><th>Sections</th><th>Wide × high</th><th>Panels</th><th>Size</th></tr></thead><tbody>' + rows +
     '<tr><td colspan="3"><b>Total</b></td><td><b>' + t.all + '</b></td><td>' + t.walls + ' wall + ' + t.ceilings + ' ceiling</td></tr></tbody></table>' +
     '<div>' + (inStudio() && (L.partitions || []).some(p => p.removed) ? '<p><b>Building walls removed:</b> ' + L.partitions.filter(p => p.removed).map(p => escapeHtml(p.name) + " (" + fmtLen(partLen(p)) + ")").join(", ") + '</p>' : '') + '<b>Omens</b>' + (om.length ? '<ul>' + om.map(o => '<li class="warn">' + escapeHtml(o.text) + '</li>').join("") + '</ul>' : '<p>None. Everything fits the room.</p>') +
@@ -1890,7 +2045,7 @@ function wireTop() {
 }
 const typing = el => el && (el.tagName === "INPUT" || el.tagName === "SELECT" || el.tagName === "TEXTAREA");
 document.addEventListener("keydown", e => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); saveLayout(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); if (e.shiftKey) quickSaveConfig(); else saveLayout(); return; }
   if (typing(e.target)) { if (e.key === "Escape") e.target.blur(); return; }
   const ctrl = e.ctrlKey || e.metaKey;
   if (ctrl && e.key.toLowerCase() === "z") { e.preventDefault(); stepHistory(e.shiftKey ? 1 : -1); return; }
@@ -1934,7 +2089,7 @@ function loop(t) {
 (function start() {
   try { const s = store.get("grim.autosave", null); if (s) { const d = JSON.parse(s); if (validLayout(d)) L = migrate(d); } } catch (e) {}
   init3D();
-  wireSide(); wireFiles(); wireTop();
+  wireSide(); wireFiles(); wireConfigs(); wireTop();
   setUnits(displayUnit); setGhost(showGhost); setView(store.get("grim.view", "split"));
   renderSide(); commit(); updateUndo();
   new ResizeObserver(() => { resizePlan(); resize3D(); }).observe($("#views"));
