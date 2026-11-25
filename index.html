@@ -283,7 +283,14 @@
     #print { display: block; font: 10pt/1.35 Arial, sans-serif; }
     #print header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #111; padding-bottom: 4px; margin-bottom: 6px; }
     #print h1 { font: 400 22pt/1 "Pirata One", Georgia, serif; margin: 0; }
-    #print img { width: 100%; max-height: 175mm; object-fit: contain; display: block; }
+    #print .figs { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+    #print .figs:has(> figure:only-child) { grid-template-columns: 1fr; }
+    #print figure { margin: 0; border: 1px solid #111; break-inside: avoid; }
+    #print figure img { width: 100%; max-height: 175mm; object-fit: contain; display: block; }
+    #print figcaption { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid #111; padding: 2px 6px; font-size: 8.5pt; }
+    #print figcaption b { text-transform: uppercase; letter-spacing: .12em; font-size: 8pt; }
+    #print figcaption span { color: #555; }
+    #print figure, #print img { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     #print .sched { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8mm; margin-top: 4mm; break-inside: avoid; }
     #print table { width: 100%; border-collapse: collapse; }
     #print th, #print td { border-bottom: 1px solid #bbb; padding: 2px 5px; text-align: left; font-size: 9pt; }
@@ -350,7 +357,7 @@
       <button type="button" class="mi danger" role="menuitem" data-file="new">Start over from today's stage</button>
     </div>
   </div>
-  <button id="printBtn" class="primary" title="Print the plan and the panel schedule">Print plan</button>
+  <button id="printBtn" class="primary" title="Print the plan, the 3D view as you have it framed, and the panel schedule">Print plan</button>
 </div>
 
 <aside id="side">
@@ -1960,11 +1967,30 @@ function wireFiles() {
 }
 
 // ---- Print: plan on paper + the panel schedule ----------------------------------------------
+// The 3D view as it stands, rendered fresh at print size rather than grabbed off the screen: no
+// selection tint, and framed to at least what the on-screen camera shows (a wider page adds floor
+// at the sides; a wider screen widens the lens so nothing on screen is cropped).
+function snapshot3D(W, H) {
+  if (!renderer) return null;
+  const sel = selId, size = renderer.getSize(new THREE.Vector2()), pr = renderer.getPixelRatio();
+  const r = $("#threeWrap").getBoundingClientRect(), shown = r.width && r.height ? r.width / r.height : camera.aspect;
+  const fov = camera.fov, aspect = camera.aspect, A = W / H;
+  selId = null; rebuild3D();
+  if (shown > A) camera.fov = 2 * Math.atan(Math.tan(rad(fov) / 2) * shown / A) * 180 / Math.PI;
+  camera.aspect = A; camera.updateProjectionMatrix();
+  renderer.setPixelRatio(1); renderer.setSize(W, H, false);
+  renderer.render(scene, camera);
+  const url = renderer.domElement.toDataURL("image/png");   // same task as the render, so the buffer is still there
+  selId = sel; dirty3D = true;
+  camera.fov = fov; camera.aspect = aspect; camera.updateProjectionMatrix();
+  renderer.setPixelRatio(pr); renderer.setSize(size.x, size.y);
+  return url;
+}
 function printPlan() {
   const W = 2400, H = 1500, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
   const v = fitView({}, W, H, 60);
   drawPlan(cv.getContext("2d"), W, H, v, THEMES.paper, { print: true, k: 2, ghost: showGhost && inStudio() });
-  const t = totals(), om = computeOmens(), cfg = activeConfig(), date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  const shot = snapshot3D(W, H), t = totals(), om = computeOmens(), cfg = activeConfig(), date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   let rows = "";
   L.walls.filter(w => w.visible !== false).forEach(w => {
     const sh = wallShape(w);
@@ -1976,7 +2002,9 @@ function printPlan() {
     rows += '<tr><td><b>' + escapeHtml(c.name) + '</b></td><td>ceiling' + (c.tiltDeg ? ", tilt " + fmtDeg(c.tiltDeg) : "") + '</td><td>' + Math.round(c.panelsWide) + " × " + Math.round(c.panelsLong) + '</td><td>' + panelsOfCeil(c) + '</td><td>' + fmtLen(d.W) + " × " + fmtLen(d.L) + " at " + fmtLen(c.heightFt) + '</td></tr>';
   });
   $("#print").innerHTML = '<header><h1>The Grim Repositioner</h1><div><b>' + escapeHtml(L.name || "") + '</b>' + (cfg ? ' · ' + escapeHtml(cfg.name) + (configDirty(cfg) ? " (edited)" : "") : '') + ' · ' + (inStudio() ? "Lumostage studio" : "open space") + ' · ' + date + ' · panels ' + panelFt().toFixed(3) + '′ (50 cm)</div></header>' +
-    (cfg && cfg.desc ? '<p class="desc">' + escapeHtml(cfg.desc) + '</p>' : '') + '<img alt="Stage plan" src="' + cv.toDataURL("image/png") + '">' +
+    (cfg && cfg.desc ? '<p class="desc">' + escapeHtml(cfg.desc) + '</p>' : '') +
+    '<div class="figs"><figure><img alt="Stage plan" src="' + cv.toDataURL("image/png") + '"><figcaption><b>Plan</b><span>' + (inStudio() ? "volume at top, north down" : "open space") + '</span></figcaption></figure>' +
+    (shot ? '<figure class="shot"><img alt="3D view of the stage" src="' + shot + '"><figcaption><b>3D view</b><span>as framed on screen · eye ' + fmtLen(camera.position.y) + ' up</span></figcaption></figure>' : '') + '</div>' +
     '<div class="sched"><table><thead><tr><th>Piece</th><th>Sections</th><th>Wide × high</th><th>Panels</th><th>Size</th></tr></thead><tbody>' + rows +
     '<tr><td colspan="3"><b>Total</b></td><td><b>' + t.all + '</b></td><td>' + t.walls + ' wall + ' + t.ceilings + ' ceiling</td></tr></tbody></table>' +
     '<div>' + (inStudio() && (L.partitions || []).some(p => p.removed) ? '<p><b>Building walls removed:</b> ' + L.partitions.filter(p => p.removed).map(p => escapeHtml(p.name) + " (" + fmtLen(partLen(p)) + ")").join(", ") + '</p>' : '') + '<b>Omens</b>' + (om.length ? '<ul>' + om.map(o => '<li class="warn">' + escapeHtml(o.text) + '</li>').join("") + '</ul>' : '<p>None. Everything fits the room.</p>') +

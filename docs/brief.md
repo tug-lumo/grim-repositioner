@@ -97,7 +97,7 @@ so they add no panels and no clash checks.
   - a ceiling outside the room or outside the rig range
   - more panels than you own
 - Undo / redo, autosave, named layouts saved in the browser, JSON export / import.
-- **Print plan:** A3 landscape. The plan on white with all labels, plus a panel schedule and the omens.
+- **Print plan:** A3 landscape. The plan on white with all labels and, beside it, the 3D view as currently framed (re-rendered at print size, selection tint off), plus a panel schedule and the omens.
 
 ## Known approximations
 
